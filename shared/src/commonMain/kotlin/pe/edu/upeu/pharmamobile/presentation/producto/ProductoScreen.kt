@@ -1,6 +1,5 @@
 package pe.edu.upeu.pharmamobile.presentation.producto
 
-// Imports necesarios para Compose Multiplatform
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,11 +11,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import pe.edu.upeu.pharmamobile.domain.model.Producto // Importamos tu entidad Producto
+import pe.edu.upeu.pharmamobile.domain.model.Producto
 
 @Composable
 fun ProductoScreen() {
-    // PASOS 7 y 8: Estado del formulario (variables observables)
+    // ============================================================
+    // PASOS 1 al 4: DECLARACIÓN DE ESTADOS
+    // ============================================================
+
+    // Estados de los campos del formulario (como String para capturar entrada libre)
     var nombre by remember { mutableStateOf("") }
     var precioStr by remember { mutableStateOf("") }
     var stockStr by remember { mutableStateOf("") }
@@ -25,80 +28,131 @@ fun ProductoScreen() {
     var mensaje by remember { mutableStateOf("") }
     var esExito by remember { mutableStateOf(false) }
 
-    // PASO 4 y 5: Estructura Column con padding y fillMaxWidth
+    // PASOS 3 y 4: Control de envío (para mostrar errores SOLO después de intentar registrar)
+    var intentoRegistrar by remember { mutableStateOf(false) }
+
+    // ============================================================
+    // ESTRUCTURA VISUAL (Column)
+    // ============================================================
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Título de la pantalla
+        // Título
         Text(
             text = "Registro de Producto",
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // PASO 6: Campo Nombre
+        // ============================================================
+        // CAMPO 1: NOMBRE (con validación visual)
+        // ============================================================
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
             label = { Text("Nombre del producto") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            // PASO 9: Mostrar error visual solo después de intentar registrar
+            isError = intentoRegistrar && nombre.isBlank()
         )
 
-        // PASO 6: Campo Precio (usamos String para manejar la entrada libre)
+        // ============================================================
+        // CAMPO 2: PRECIO (con validación visual)
+        // ============================================================
         OutlinedTextField(
             value = precioStr,
             onValueChange = { precioStr = it },
             label = { Text("Precio (ej: 8.50)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            // PASO 9: Mostrar error visual si el precio no es válido
+            isError = intentoRegistrar && (
+                    precioStr.toDoubleOrNull() == null ||
+                            precioStr.toDoubleOrNull()!! <= 0.0
+                    )
         )
 
-        // PASO 6: Campo Stock (usamos String para manejar la entrada libre)
+        // ============================================================
+        // CAMPO 3: STOCK (con validación visual)
+        // ============================================================
         OutlinedTextField(
             value = stockStr,
             onValueChange = { stockStr = it },
             label = { Text("Stock (ej: 100)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            // PASO 9: Mostrar error visual si el stock no es válido
+            isError = intentoRegistrar && (
+                    stockStr.toIntOrNull() == null ||
+                            stockStr.toIntOrNull()!! < 0
+                    )
         )
 
-        // PASO 9: Botón Registrar
+        // ============================================================
+        // BOTÓN REGISTRAR
+        // ============================================================
         Button(
             onClick = {
-                // PASO 10: VALIDACIONES (según los casos de prueba)
-                // Caso 02: Nombre vacío
+                // PASO 4: Marcamos que se intentó registrar (para activar errores visuales)
+                intentoRegistrar = true
+
+                // ============================================================
+                // PASOS 5, 6 y 7: CONVERSIÓN SEGURA Y VALIDACIÓN SECUENCIAL
+                // ============================================================
+
+                // 1. Validar NOMBRE (no vacío ni solo espacios)
                 if (nombre.isBlank()) {
-                    mensaje = "Ingrese nombre del producto"
+                    mensaje = "El nombre es obligatorio."
                     esExito = false
                     return@Button
                 }
 
-                // Caso 03: Precio inválido (no es número o es <= 0)
+                // 2. Validar PRECIO (conversión segura y rango)
                 val precio = precioStr.toDoubleOrNull()
-                if (precio == null || precio <= 0.0) {
-                    mensaje = "Ingrese precio válido"
+                if (precio == null) {
+                    mensaje = "Ingrese un precio numérico."
+                    esExito = false
+                    return@Button
+                }
+                if (precio <= 0.0) {
+                    mensaje = "El precio debe ser mayor que cero."
                     esExito = false
                     return@Button
                 }
 
-                // Caso 04: Stock negativo o no es número entero
+                // 3. Validar STOCK (conversión segura y rango)
                 val stock = stockStr.toIntOrNull()
-                if (stock == null || stock < 0) {
-                    mensaje = "El stock no puede ser negativo"
+                if (stock == null) {
+                    mensaje = "Ingrese un stock entero."
+                    esExito = false
+                    return@Button
+                }
+                if (stock < 0) {
+                    mensaje = "El stock no puede ser negativo."
                     esExito = false
                     return@Button
                 }
 
-                // PASO 11: SI todo es correcto, CREAMOS el objeto Producto
+                // ============================================================
+                // PASO 7: CREACIÓN DEL OBJETO PRODUCTO (solo si todo es válido)
+                // ============================================================
                 val nuevoProducto = Producto(
-                    id = 0L, // En la BD real se genera automáticamente, por ahora 0
-                    nombre = nombre,
+                    id = 0L, // En la BD real se genera automáticamente
+                    nombre = nombre.trim(),
                     precio = precio,
                     stock = stock
                 )
 
-                // PASO 12: Mostramos mensaje de éxito (Caso 01)
-                mensaje = "Producto registrado correctamente: ${nuevoProducto.nombre}"
+                // ============================================================
+                // PASO 8: LIMPIEZA DEL FORMULARIO (después de registro exitoso)
+                // ============================================================
+                nombre = ""
+                precioStr = ""
+                stockStr = ""
+                intentoRegistrar = false // Reseteamos para que los campos dejen de estar en rojo
+
+                // Mostramos mensaje de éxito
+                mensaje = "✅ Producto registrado correctamente: ${nuevoProducto.nombre}"
                 esExito = true
             },
             modifier = Modifier
@@ -108,7 +162,9 @@ fun ProductoScreen() {
             Text("REGISTRAR")
         }
 
-        // PASO 12: Componente Text reactivo para mostrar mensajes
+        // ============================================================
+        // MENSAJE DE RESULTADO (reactivo)
+        // ============================================================
         if (mensaje.isNotEmpty()) {
             Text(
                 text = mensaje,
