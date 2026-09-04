@@ -5,8 +5,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import pe.edu.upeu.pharmamobile.navegation.Screen
 import pe.edu.upeu.pharmamobile.presentation.producto.ProductoScreen
 import pe.edu.upeu.pharmamobile.presentation.cliente.ClientesScreen
@@ -16,18 +18,17 @@ import pe.edu.upeu.pharmamobile.presentation.inicio.InicioScreen
 
 @Composable
 fun MainScreen(
-    darkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    darkTheme: Boolean,         // Recibimos el estado del tema
+    onToggleTheme: () -> Unit   // Recibimos la función para cambiarlo
 ) {
-
-    // Estado que guarda la pantalla actual
+    // Estado de la pantalla actual (Inicio por defecto)
     var pantallaActual by remember { mutableStateOf<Screen>(Screen.Inicio) }
 
-    // Estado y corrutina para el Drawer
+    // Estado del Drawer (cerrado por defecto)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Título dinámico según la pantalla
+    // Función para obtener el título dinámico según la pantalla
     fun getTitle(screen: Screen): String {
         return when (screen) {
             Screen.Inicio -> "Inicio"
@@ -37,11 +38,12 @@ fun MainScreen(
         }
     }
 
+    // Estructura principal: Drawer envolviendo el Scaffold
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // Encabezado del Drawer
+                // --- ENCABEZADO DEL DRAWER ---
                 Text(
                     text = "PharmaMobil",
                     style = MaterialTheme.typography.headlineSmall,
@@ -49,7 +51,7 @@ fun MainScreen(
                 )
                 HorizontalDivider()
 
-                // Opciones de navegación
+                // --- OPCIONES DE NAVEGACIÓN ---
                 NavigationDrawerItem(
                     label = { Text("Inicio") },
                     selected = pantallaActual == Screen.Inicio,
@@ -59,6 +61,7 @@ fun MainScreen(
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
                 NavigationDrawerItem(
                     label = { Text("Productos") },
                     selected = pantallaActual == Screen.Productos,
@@ -86,10 +89,32 @@ fun MainScreen(
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+                // --- SEPARADOR ANTES DEL SWITCH ---
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // --- PASO 7: SWITCH PARA CAMBIAR EL TEMA ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tema Oscuro",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(
+                        checked = darkTheme,  // El estado actual
+                        onCheckedChange = {
+                            onToggleTheme()   // Llamamos a la función para invertir el estado
+                        }
+                    )
+                }
             }
         }
     ) {
-        // Scaffold con TopAppBar
+        // --- SCAFFOLD (Estructura de la pantalla) ---
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -107,7 +132,7 @@ fun MainScreen(
                 )
             }
         ) { paddingValues ->
-            // Contenido principal con padding de la barra
+            // Contenido dinámico según la pantalla seleccionada
             Box(
                 modifier = Modifier
                     .fillMaxSize()
