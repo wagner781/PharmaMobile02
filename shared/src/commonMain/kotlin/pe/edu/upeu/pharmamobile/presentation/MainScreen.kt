@@ -1,5 +1,7 @@
 package pe.edu.upeu.pharmamobile.presentation
 
+import org.koin.compose.viewmodel.koinViewModel
+import pe.edu.upeu.pharmamobile.presentation.producto.ProductoViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
 import pe.edu.upeu.pharmamobile.navegation.Screen
 import pe.edu.upeu.pharmamobile.presentation.producto.ProductoScreen
 import pe.edu.upeu.pharmamobile.presentation.cliente.ClientesScreen
@@ -140,7 +141,10 @@ fun MainScreen(
             ) {
                 when (pantallaActual) {
                     Screen.Inicio -> InicioScreen()
-                    Screen.Productos -> ProductoScreen()
+                    Screen.Productos -> {
+                        val viewModel: ProductoViewModel = koinViewModel()
+                        ProductoScreen(viewModel = viewModel)
+                    }
                     Screen.Clientes -> ClientesScreen()
                     Screen.Pedidos -> PedidosScreen()
                 }

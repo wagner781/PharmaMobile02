@@ -1,48 +1,31 @@
 package pe.edu.upeu.pharmamobile
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
-
-import pharmamobile.shared.generated.resources.Res
-import pharmamobile.shared.generated.resources.compose_multiplatform
+import org.koin.compose.KoinContext
+import org.koin.compose.viewmodel.koinViewModel
+import pe.edu.upeu.pharmamobile.navegation.Screen
+import pe.edu.upeu.pharmamobile.presentation.Pedidos.PedidosScreen
+import pe.edu.upeu.pharmamobile.presentation.cliente.ClientesScreen
+import pe.edu.upeu.pharmamobile.presentation.inicio.InicioScreen
+import pe.edu.upeu.pharmamobile.presentation.producto.ProductoScreen
+import pe.edu.upeu.pharmamobile.presentation.theme.PharmaMobilTheme
 
 @Composable
-@Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
+    // Declaramos el estado del tema
+    var darkTheme by remember { mutableStateOf(false) }
+
+    // Declaramos el estado de la pantalla actual
+    var pantallaActual by remember { mutableStateOf<Screen>(Screen.Inicio) }
+
+    KoinContext {
+        PharmaMobilTheme(darkTheme = darkTheme) {
+            // ... resto de navegación (Drawer, Scaffold, etc.)
+            when (pantallaActual) {
+                Screen.Inicio -> InicioScreen()
+                Screen.Productos -> ProductoScreen(viewModel = koinViewModel())
+                Screen.Clientes -> ClientesScreen()
+                Screen.Pedidos -> PedidosScreen()
             }
         }
     }
