@@ -8,12 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import pe.edu.upeu.pharmamobile.domain.model.Producto
-import pe.edu.upeu.pharmamobile.domain.repository.ProductRepository
+import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 
 class ProductoViewModel(
-    private val repository: ProductRepository,
+    private val repository: ProductoRepository,
     private val registrarProductoUseCase: RegistrarProductoUseCase
 ) : ViewModel() {
 

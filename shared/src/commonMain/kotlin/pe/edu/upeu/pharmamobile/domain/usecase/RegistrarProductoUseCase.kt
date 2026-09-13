@@ -1,10 +1,10 @@
 package pe.edu.upeu.pharmamobile.domain.usecase
 
 import pe.edu.upeu.pharmamobile.domain.model.Producto
-import pe.edu.upeu.pharmamobile.domain.repository.ProductRepository
+import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 
 class RegistrarProductoUseCase(
-    private val repository: ProductRepository
+    private val repository: ProductoRepository
 ) {
     // Clase interna para errores de validación
     data class ErroresProducto(

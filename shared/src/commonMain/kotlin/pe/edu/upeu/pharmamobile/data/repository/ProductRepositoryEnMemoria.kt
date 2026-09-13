@@ -2,9 +2,9 @@ package pe.edu.upeu.pharmamobile.data.repository
 
 import kotlinx.coroutines.delay
 import pe.edu.upeu.pharmamobile.domain.model.Producto
-import pe.edu.upeu.pharmamobile.domain.repository.ProductRepository
+import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 
-class ProductRepositoryEnMemoria : ProductRepository {
+class ProductRepositoryEnMemoria : ProductoRepository {
     private val productos = mutableListOf<Producto>()
     private var contadorId = 1L
 

@@ -2,18 +2,18 @@ package pe.edu.upeu.pharmamobile.di
 
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
-import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
+import org.koin.core.module.dsl.viewModelOf
 import pe.edu.upeu.pharmamobile.data.repository.ProductRepositoryEnMemoria
-import pe.edu.upeu.pharmamobile.domain.repository.ProductRepository
+import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.presentation.producto.ProductoViewModel
 
 expect val platformModule: Module
 
 val dataModule = module {
-    single<ProductRepository> { ProductRepositoryEnMemoria() }
+    single<ProductoRepository> { ProductRepositoryEnMemoria() }
 }
 
 val domainModule = module {
