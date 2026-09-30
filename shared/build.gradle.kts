@@ -6,7 +6,10 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
+
+val ktor = "3.6.0"
 
 kotlin {
     listOf(
@@ -64,6 +67,16 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
 
+            implementation("io.ktor:ktor-client-core:$ktor")
+            implementation("io.ktor:ktor-client-content-negotiation:$ktor")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
+            implementation("io.ktor:ktor-client-logging:$ktor")
+        }
+        androidMain.dependencies {
+            implementation("io.ktor:ktor-client-okhttp:$ktor")
+        }
+        iosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:$ktor")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

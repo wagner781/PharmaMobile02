@@ -32,3 +32,12 @@ Aplicación móvil multiplataforma para la gestión integral de inventarios, ped
 - **Android App:** Usa el botón "Run" en Android Studio o ejecuta:
   ```bash
   ./gradlew :androidApp:assembleDebug
+  ```
+
+---
+
+## Consumo de API (Ktor)
+
+- **URL Base:** `https://api.escuelajs.co/api/v1/`
+- **Endpoint consumido:** `GET /products?limit={limite}`
+- **DTOs Implementados:** `ProductoDto`, `CategoriaDto`

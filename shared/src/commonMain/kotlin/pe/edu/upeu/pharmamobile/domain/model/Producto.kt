@@ -4,7 +4,10 @@ data class Producto(
     val id: Long,
     val nombre: String,
     val precio: Double,
-    val stock: Int
+    val stock: Int = 10,
+    val descripcion: String = "",
+    val imagen: String = "",
+    val categoria: String = ""
 ){
 
     // Regla de negocio: requiere reposición si stock <= 5

@@ -5,7 +5,9 @@ import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 import org.koin.core.module.dsl.viewModelOf
-import pe.edu.upeu.pharmamobile.data.repository.ProductRepositoryEnMemoria
+import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
+import pe.edu.upeu.pharmamobile.data.remote.crearHttpClient
+import pe.edu.upeu.pharmamobile.data.repository.ProductoRepositoryImpl
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.presentation.producto.ProductoViewModel
@@ -13,7 +15,9 @@ import pe.edu.upeu.pharmamobile.presentation.producto.ProductoViewModel
 expect val platformModule: Module
 
 val dataModule = module {
-    single<ProductoRepository> { ProductRepositoryEnMemoria() }
+    single { crearHttpClient(get()) }
+    single { ProductoApi(get()) }
+    single<ProductoRepository> { ProductoRepositoryImpl(get()) }
 }
 
 val domainModule = module {

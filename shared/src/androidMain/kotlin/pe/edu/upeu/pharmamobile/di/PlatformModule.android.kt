@@ -1,8 +1,10 @@
 package pe.edu.upeu.pharmamobile.di
 
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
 actual val platformModule: Module = module {
-    // Por ahora vacío, en el futuro pondremos dependencias de Android
+    single<HttpClientEngine> { OkHttp.create() }
 }

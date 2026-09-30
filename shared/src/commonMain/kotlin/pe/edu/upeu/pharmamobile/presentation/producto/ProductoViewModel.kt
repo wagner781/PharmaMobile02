@@ -26,7 +26,7 @@ class ProductoViewModel(
     fun cargarProductos() {
         viewModelScope.launch {
             _uiState.update { it.copy(fase = ProductoUiState.Fase.Cargando) }
-            runCatching { repository.listar() }
+            repository.listar()
                 .onSuccess { lista ->
                     _uiState.update {
                         it.copy(
