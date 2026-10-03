@@ -90,50 +90,62 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
 
         // Lista de productos según fase
         when (val fase = uiState.fase) {
-            ProductoUiState.Fase.Cargando -> {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            ProductoUiState.Fase.SinProductos -> {
-                Text("No hay productos registrados")
-            }
-            is ProductoUiState.Fase.ConProductos -> {
-                LazyColumn {
-                    items(fase.productos) { producto ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(producto.nombre, style = MaterialTheme.typography.bodyLarge)
-                                    Text("Precio: S/. ${producto.precio}", style = MaterialTheme.typography.bodyMedium)
-                                    if (producto.requiereReposicion) {
-                                        Text("⚠️ Requiere reposición", color = Color(0xFFFFA500))
-                                    }
-                                }
-                                Text(
-                                    text = "Stock: ${producto.stock}",
-                                    color = when {
-                                        producto.stock == 0 -> Color.Red
-                                        producto.stock <= 5 -> Color(0xFFFFA500)
-                                        else -> Color.Green
-                                    }
-                                )
-                            }
+            ProductoUiState.Fase.Cargando -> IndicadorCarga()
+            ProductoUiState.Fase.SinProductos -> EstadoVacio("No hay productos registrados")
+            is ProductoUiState.Fase.ConProductos -> ListaProductos(fase.productos)
+            is ProductoUiState.Fase.Error -> EstadoError(fase.mensaje)
+        }
+    }
+}
+
+@Composable
+private fun IndicadorCarga() {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun EstadoVacio(mensaje: String) {
+    Text(mensaje)
+}
+
+@Composable
+private fun ListaProductos(productos: List<Producto>) {
+    LazyColumn {
+        items(productos) { producto ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(producto.nombre, style = MaterialTheme.typography.bodyLarge)
+                        Text("Precio: S/. ${producto.precio}", style = MaterialTheme.typography.bodyMedium)
+                        if (producto.requiereReposicion) {
+                            Text("⚠️ Requiere reposición", color = Color(0xFFFFA500))
                         }
                     }
+                    Text(
+                        text = "Stock: ${producto.stock}",
+                        color = when {
+                            producto.stock == 0 -> Color.Red
+                            producto.stock <= 5 -> Color(0xFFFFA500)
+                            else -> Color.Green
+                        }
+                    )
                 }
-            }
-            is ProductoUiState.Fase.Error -> {
-                Text("Error: ${fase.mensaje}", color = Color.Red)
             }
         }
     }
+}
+
+@Composable
+private fun EstadoError(mensaje: String) {
+    Text("Error: $mensaje", color = Color.Red)
 }
