@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import pe.edu.upeu.pharmamobile.domain.usecase.ListarProductosUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 
 class ProductoViewModel(
     private val listarProductosUseCase: ListarProductosUseCase,
@@ -106,8 +108,31 @@ class ProductoViewModel(
     }
 
     private fun manejarFallo(fallo: Throwable) {
-        _uiState.update {
-            it.copy(operacion = ProductoUiState.Operacion.Fallida(fallo.message ?: "Error desconocido"))
+        val error = (fallo as? ErrorApiException)?.error
+        when (error) {
+            is ErrorApi.Validacion -> _uiState.update {
+                it.copy(
+                    operacion = ProductoUiState.Operacion.Inactiva,
+                    formulario = it.formulario.copy(
+                        nombreError = error.porCampo["nombre"],
+                        precioError = error.porCampo["precio"],
+                        stockError = error.porCampo["stock"]
+                    )
+                )
+            }
+            else -> _uiState.update {
+                it.copy(operacion = ProductoUiState.Operacion.Fallida(mensajeDe(error ?: fallo)))
+            }
         }
+    }
+
+    private fun mensajeDe(error: Any): String = when (error) {
+        is ErrorApi.NoEncontrado -> "Producto no encontrado"
+        is ErrorApi.Conflicto -> error.mensaje
+        is ErrorApi.Servidor -> "Error interno del servidor"
+        is ErrorApi.SinConexion -> "Sin conexión a internet"
+        is ErrorApi.TiempoAgotado -> "Tiempo de espera agotado"
+        is Throwable -> error.message ?: "Error desconocido"
+        else -> "Error desconocido"
     }
 }
