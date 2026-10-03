@@ -35,7 +35,7 @@ fun crearHttpClient(engine: HttpClientEngine): HttpClient =
             connectTimeoutMillis = 10000
         }
         defaultRequest {
-            url("http://10.0.2.2:8080/api/")
+            url("http://10.0.2.2:8080")
             contentType(ContentType.Application.Json)
         }
     }

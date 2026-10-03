@@ -20,21 +20,21 @@ class ProductoApi(private val client: HttpClient) {
         }.body()
 
     suspend fun listar(pagina: Int = 0, tamanio: Int = 20): PaginaResponseDto<ProductoResponseDto> =
-        client.get("productos") {
+        client.get("/api/productos") {
             parameter("pagina", pagina)
             parameter("tamanio", tamanio)
         }.body()
 
     suspend fun obtener(id: Long): ProductoResponseDto =
-        client.get("productos/$id").body()
+        client.get("/api/productos/$id").body()
 
     suspend fun crear(request: ProductoRequestDto): ProductoResponseDto =
-        client.post("productos") { setBody(request) }.body()
+        client.post("/api/productos") { setBody(request) }.body()
 
     suspend fun actualizar(id: Long, request: ProductoRequestDto): ProductoResponseDto =
-        client.put("productos/$id") { setBody(request) }.body()
+        client.put("/api/productos/$id") { setBody(request) }.body()
 
     suspend fun eliminar(id: Long) {
-        client.delete("productos/$id")
+        client.delete("/api/productos/$id")
     }
 }
