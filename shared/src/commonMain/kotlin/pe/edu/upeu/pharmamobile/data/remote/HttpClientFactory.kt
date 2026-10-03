@@ -35,7 +35,7 @@ fun crearHttpClient(engine: HttpClientEngine): HttpClient =
             connectTimeoutMillis = 10000
         }
         defaultRequest {
-            url("https://api.escuelajs.co/api/v1/")
+            url("http://10.0.2.2:8080/api/")
             contentType(ContentType.Application.Json)
         }
     }
