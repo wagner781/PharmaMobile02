@@ -2,6 +2,7 @@ package pe.edu.upeu.pharmamobile.domain.usecase
 
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
+import pe.edu.upeu.pharmamobile.data.remote.ejecutarLlamada
 
 class RegistrarProductoUseCase(
     private val repository: ProductoRepository
@@ -48,6 +49,6 @@ class RegistrarProductoUseCase(
             precio = precioStr.toDouble(),
             stock = stockStr.toInt()
         )
-        return runCatching { repository.registrar(producto) }
+        return ejecutarLlamada { repository.registrar(producto) }
     }
 }

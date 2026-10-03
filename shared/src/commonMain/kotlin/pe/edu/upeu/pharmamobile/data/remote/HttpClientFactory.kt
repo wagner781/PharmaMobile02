@@ -22,7 +22,14 @@ fun crearHttpClient(engine: HttpClientEngine): HttpClient =
                 encodeDefaults = true
             })
         }
-        install(Logging) { level = LogLevel.HEADERS }
+        install(Logging) {
+            logger = object : io.ktor.client.plugins.logging.Logger {
+                override fun log(message: String) {
+                    println("KtorLog: $message")
+                }
+            }
+            level = LogLevel.HEADERS
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 15000
             connectTimeoutMillis = 10000

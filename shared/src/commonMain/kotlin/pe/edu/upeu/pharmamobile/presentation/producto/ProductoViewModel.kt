@@ -8,11 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
+import pe.edu.upeu.pharmamobile.domain.usecase.ListarProductosUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 
 class ProductoViewModel(
-    private val repository: ProductoRepository,
+    private val listarProductosUseCase: ListarProductosUseCase,
     private val registrarProductoUseCase: RegistrarProductoUseCase
 ) : ViewModel() {
 
@@ -26,7 +26,7 @@ class ProductoViewModel(
     fun cargarProductos() {
         viewModelScope.launch {
             _uiState.update { it.copy(fase = ProductoUiState.Fase.Cargando) }
-            repository.listar()
+            listarProductosUseCase()
                 .onSuccess { lista ->
                     _uiState.update {
                         it.copy(
