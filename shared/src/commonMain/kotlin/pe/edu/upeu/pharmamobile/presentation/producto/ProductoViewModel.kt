@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.edu.upeu.pharmamobile.domain.usecase.ListarProductosUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
+import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
 
 class ProductoViewModel(
     private val listarProductosUseCase: ListarProductosUseCase,
-    private val registrarProductoUseCase: RegistrarProductoUseCase
+    private val registrarProductoUseCase: RegistrarProductoUseCase,
+    private val eliminarProductoUseCase: EliminarProductoUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductoUiState())
@@ -31,8 +33,7 @@ class ProductoViewModel(
                     _uiState.update {
                         it.copy(
                             fase = if (lista.isEmpty()) ProductoUiState.Fase.SinProductos
-                            else ProductoUiState.Fase.ConProductos,
-                            productos = lista
+                            else ProductoUiState.Fase.ConProductos(lista)
                         )
                     }
                 }
@@ -67,7 +68,7 @@ class ProductoViewModel(
 
     fun registrarProducto() {
         viewModelScope.launch {
-            _uiState.update { it.copy(guardando = true, mensaje = null) }
+            _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Crear), mensajeExito = null) }
             val resultado = registrarProductoUseCase(
                 nombre = uiState.value.formulario.nombre,
                 precioStr = uiState.value.formulario.precio,
@@ -75,26 +76,38 @@ class ProductoViewModel(
             )
             resultado.fold(
                 onSuccess = { producto ->
+                    cargarProductos() // Actualizar lista
                     _uiState.update {
                         it.copy(
-                            guardando = false,
-                            mensaje = "Producto registrado: ${producto.nombre}",
+                            operacion = ProductoUiState.Operacion.Inactiva,
+                            mensajeExito = "Producto registrado: ${producto.nombre}",
                             formulario = ProductoUiState.FormularioProducto() // Limpiar formulario
                         )
                     }
-                    cargarProductos() // Actualizar lista
                 },
-                onFailure = { error ->
-                    // Extraer errores del mensaje (simplificado)
-                    val mensaje = error.message ?: "Error al registrar"
-                    _uiState.update {
-                        it.copy(
-                            guardando = false,
-                            mensaje = mensaje
-                        )
-                    }
-                }
+                onFailure = { fallo -> manejarFallo(fallo) }
             )
+        }
+    }
+
+    fun eliminar(id: Long) = viewModelScope.launch {
+        _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Eliminar)) }
+        eliminarProductoUseCase(id)
+            .onSuccess {
+                cargarProductos()
+                _uiState.update {
+                    it.copy(
+                        operacion = ProductoUiState.Operacion.Inactiva,
+                        mensajeExito = "Producto eliminado"
+                    )
+                }
+            }
+            .onFailure { fallo -> manejarFallo(fallo) }
+    }
+
+    private fun manejarFallo(fallo: Throwable) {
+        _uiState.update {
+            it.copy(operacion = ProductoUiState.Operacion.Fallida(fallo.message ?: "Error desconocido"))
         }
     }
 }

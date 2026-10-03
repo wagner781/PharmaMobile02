@@ -61,19 +61,27 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
         Button(
             onClick = { viewModel.registrarProducto() },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            enabled = !uiState.guardando
+            enabled = uiState.operacion !is ProductoUiState.Operacion.EnCurso
         ) {
-            if (uiState.guardando) {
+            if (uiState.operacion is ProductoUiState.Operacion.EnCurso) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
                 Text("Registrar")
             }
         }
 
-        if (uiState.mensaje != null) {
+        if (uiState.mensajeExito != null) {
             Text(
-                text = uiState.mensaje!!,
-                color = if (uiState.guardando) Color.Gray else Color.Green,
+                text = uiState.mensajeExito!!,
+                color = Color.Green,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+        if (uiState.operacion is ProductoUiState.Operacion.Fallida) {
+            val fallo = uiState.operacion as ProductoUiState.Operacion.Fallida
+            Text(
+                text = fallo.mensaje,
+                color = Color.Red,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
         }
@@ -90,9 +98,9 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
             ProductoUiState.Fase.SinProductos -> {
                 Text("No hay productos registrados")
             }
-            ProductoUiState.Fase.ConProductos -> {
+            is ProductoUiState.Fase.ConProductos -> {
                 LazyColumn {
-                    items(uiState.productos) { producto ->
+                    items(fase.productos) { producto ->
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             colors = CardDefaults.cardColors(
@@ -124,7 +132,7 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
                 }
             }
             is ProductoUiState.Fase.Error -> {
-                Text("Error: ${fase.detalle}", color = Color.Red)
+                Text("Error: ${fase.mensaje}", color = Color.Red)
             }
         }
     }
