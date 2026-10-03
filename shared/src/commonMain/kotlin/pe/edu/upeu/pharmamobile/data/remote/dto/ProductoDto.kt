@@ -15,3 +15,23 @@ data class ProductoDto(
 
 @Serializable
 data class CategoriaDto(val id: Int, val name: String)
+
+@Serializable
+data class ProductoRequestDto(
+    val nombre: String,
+    val precio: Double,
+    val stock: Int,
+    val estado: Boolean = true,
+    val categoriaId: Long
+)
+
+@Serializable
+data class ProductoResponseDto(
+    val id: Long,
+    val nombre: String,
+    val precio: Double,
+    val stock: Int,
+    val estado: Boolean = true,
+    val categoriaId: Long? = null,
+    val categoriaNombre: String? = null
+)
