@@ -1,40 +1,55 @@
 package pe.edu.upeu.pharmamobile
 
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 
-// Repositorio falso: lista vacía
-class RepositorioVacio : ProductoRepository {
-    override suspend fun listar(): List<Producto> = emptyList()
-    override suspend fun obtener(id: Long): Producto = throw IllegalStateException("No encontrado")
-    override suspend fun registrar(p: Producto): Producto = p
-    override suspend fun actualizar(p: Producto): Producto = p
-    override suspend fun eliminar(id: Long) {}
-}
+class FakeProductoRepository(
+    initialProductos: List<Producto> = emptyList(),
+    var fallarConError: ErrorApi? = null
+) : ProductoRepository {
 
-// Repositorio falso: 3 productos. Además "espía" si registrar fue llamado.
-class RepositorioConProductos : ProductoRepository {
-    var registrarLlamado = false
+    private val db = initialProductos.toMutableList()
+    private var nextId = (db.maxOfOrNull { it.id } ?: 0L) + 1L
 
-    override suspend fun listar(): List<Producto> = listOf(
-        Producto(1L, "Paracetamol", 15.50, 100),
-        Producto(2L, "Ibuprofeno", 18.90, 50),
-        Producto(3L, "Amoxicilina", 25.00, 5)
-    )
-    override suspend fun obtener(id: Long): Producto = Producto(id, "Mock", 10.0, 10)
-    override suspend fun registrar(p: Producto): Producto {
-        registrarLlamado = true
-        return p
+    override suspend fun listar(): List<Producto> {
+        kotlinx.coroutines.delay(10)
+        checkError()
+        return db.filter { it.estado }.toList()
     }
-    override suspend fun actualizar(p: Producto): Producto = p
-    override suspend fun eliminar(id: Long) {}
-}
 
-// Repositorio falso: lanza excepción
-class RepositorioFalla : ProductoRepository {
-    override suspend fun listar(): List<Producto> = throw IllegalStateException("Sin conexión")
-    override suspend fun obtener(id: Long): Producto = throw IllegalStateException("Sin conexión")
-    override suspend fun registrar(p: Producto): Producto = throw IllegalStateException("Sin conexión")
-    override suspend fun actualizar(p: Producto): Producto = throw IllegalStateException("Sin conexión")
-    override suspend fun eliminar(id: Long) = throw IllegalStateException("Sin conexión")
+    override suspend fun obtener(id: Long): Producto {
+        checkError()
+        return db.find { it.id == id && it.estado } 
+            ?: throw ErrorApiException(ErrorApi.NoEncontrado)
+    }
+
+    override suspend fun registrar(producto: Producto): Producto {
+        checkError()
+        val nuevo = producto.copy(id = nextId++)
+        db.add(nuevo)
+        return nuevo
+    }
+
+    override suspend fun actualizar(producto: Producto): Producto {
+        checkError()
+        val index = db.indexOfFirst { it.id == producto.id }
+        if (index == -1) throw ErrorApiException(ErrorApi.NoEncontrado)
+        db[index] = producto
+        return producto
+    }
+
+    override suspend fun eliminar(id: Long) {
+        kotlinx.coroutines.delay(10)
+        checkError()
+        val index = db.indexOfFirst { it.id == id && it.estado }
+        if (index == -1) throw ErrorApiException(ErrorApi.NoEncontrado)
+        val p = db[index]
+        db[index] = p.copy(estado = false)
+    }
+
+    private fun checkError() {
+        fallarConError?.let { throw ErrorApiException(it) }
+    }
 }
