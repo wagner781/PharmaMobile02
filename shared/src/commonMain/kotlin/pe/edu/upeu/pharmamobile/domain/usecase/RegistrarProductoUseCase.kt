@@ -39,7 +39,13 @@ class RegistrarProductoUseCase(
         )
 
         if (errores.hayAlguno) {
-            return Result.failure(IllegalStateException(errores.toString()))
+            val mapa = mutableMapOf<String, String>()
+            errores.nombre?.let { mapa["nombre"] = it }
+            errores.precio?.let { mapa["precio"] = it }
+            errores.stock?.let { mapa["stock"] = it }
+            return Result.failure(pe.edu.upeu.pharmamobile.domain.error.ErrorApiException(
+                pe.edu.upeu.pharmamobile.domain.error.ErrorApi.Validacion(mapa)
+            ))
         }
 
         // Crear producto y delegar en el repositorio

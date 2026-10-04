@@ -17,6 +17,7 @@ import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 class ProductoViewModel(
     private val listarProductosUseCase: ListarProductosUseCase,
     private val registrarProductoUseCase: RegistrarProductoUseCase,
+    private val actualizarProductoUseCase: pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase,
     private val eliminarProductoUseCase: EliminarProductoUseCase
 ) : ViewModel() {
 
@@ -50,6 +51,7 @@ class ProductoViewModel(
     }
 
     fun actualizarFormulario(
+        id: Long? = uiState.value.formulario.id,
         nombre: String = uiState.value.formulario.nombre,
         precio: String = uiState.value.formulario.precio,
         stock: String = uiState.value.formulario.stock
@@ -57,6 +59,7 @@ class ProductoViewModel(
         _uiState.update {
             it.copy(
                 formulario = it.formulario.copy(
+                    id = id,
                     nombre = nombre,
                     precio = precio,
                     stock = stock,
@@ -68,7 +71,25 @@ class ProductoViewModel(
         }
     }
 
-    fun registrarProducto() {
+    fun editarProducto(producto: pe.edu.upeu.pharmamobile.domain.model.Producto) {
+        actualizarFormulario(
+            id = producto.id,
+            nombre = producto.nombre,
+            precio = producto.precio.toString(),
+            stock = producto.stock.toString()
+        )
+    }
+
+    fun guardarProducto() {
+        val formulario = uiState.value.formulario
+        if (formulario.id == null) {
+            registrarProducto()
+        } else {
+            actualizarProducto(formulario.id)
+        }
+    }
+
+    private fun registrarProducto() {
         viewModelScope.launch {
             _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Crear), mensajeExito = null) }
             val resultado = registrarProductoUseCase(
@@ -84,6 +105,51 @@ class ProductoViewModel(
                             operacion = ProductoUiState.Operacion.Inactiva,
                             mensajeExito = "Producto registrado: ${producto.nombre}",
                             formulario = ProductoUiState.FormularioProducto() // Limpiar formulario
+                        )
+                    }
+                },
+                onFailure = { fallo -> manejarFallo(fallo) }
+            )
+        }
+    }
+
+    private fun actualizarProducto(id: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Actualizar), mensajeExito = null) }
+            
+            // Validaciones manuales básicas que hacía el RegistrarProductoUseCase
+            val nombre = uiState.value.formulario.nombre.trim()
+            val precioStr = uiState.value.formulario.precio
+            val stockStr = uiState.value.formulario.stock
+            
+            val mapaErrores = mutableMapOf<String, String>()
+            if (nombre.isBlank()) mapaErrores["nombre"] = "El nombre es obligatorio"
+            if (precioStr.toDoubleOrNull() == null) mapaErrores["precio"] = "Precio inválido"
+            if (stockStr.toIntOrNull() == null) mapaErrores["stock"] = "Stock inválido"
+
+            if (mapaErrores.isNotEmpty()) {
+                manejarFallo(pe.edu.upeu.pharmamobile.domain.error.ErrorApiException(
+                    pe.edu.upeu.pharmamobile.domain.error.ErrorApi.Validacion(mapaErrores)
+                ))
+                return@launch
+            }
+            
+            val producto = pe.edu.upeu.pharmamobile.domain.model.Producto(
+                id = id,
+                nombre = nombre,
+                precio = precioStr.toDouble(),
+                stock = stockStr.toInt()
+            )
+            
+            val resultado = actualizarProductoUseCase(producto)
+            resultado.fold(
+                onSuccess = { prod ->
+                    cargarProductos()
+                    _uiState.update {
+                        it.copy(
+                            operacion = ProductoUiState.Operacion.Inactiva,
+                            mensajeExito = "Producto actualizado: ${prod.nombre}",
+                            formulario = ProductoUiState.FormularioProducto()
                         )
                     }
                 },

@@ -15,26 +15,26 @@ import pe.edu.upeu.pharmamobile.data.remote.dto.PaginaResponseDto
 
 class ProductoApi(private val client: HttpClient) {
     suspend fun obtenerProductos(limite: Int = 10): List<ProductoDto> =
-        client.get("products") {
+        client.get("/v1/products") {
             parameter("limit", limite)
         }.body()
 
     suspend fun listar(pagina: Int = 0, tamanio: Int = 20): PaginaResponseDto<ProductoResponseDto> =
-        client.get("/api/productos") {
+        client.get("/api/v1/productos") {
             parameter("pagina", pagina)
             parameter("tamanio", tamanio)
         }.body()
 
     suspend fun obtener(id: Long): ProductoResponseDto =
-        client.get("/api/productos/$id").body()
+        client.get("/api/v1/productos/$id").body()
 
     suspend fun crear(request: ProductoRequestDto): ProductoResponseDto =
-        client.post("/api/productos") { setBody(request) }.body()
+        client.post("/api/v1/productos") { setBody(request) }.body()
 
     suspend fun actualizar(id: Long, request: ProductoRequestDto): ProductoResponseDto =
-        client.put("/api/productos/$id") { setBody(request) }.body()
+        client.put("/api/v1/productos/$id") { setBody(request) }.body()
 
     suspend fun eliminar(id: Long) {
-        client.delete("/api/productos/$id")
+        client.delete("/api/v1/productos/$id")
     }
 }

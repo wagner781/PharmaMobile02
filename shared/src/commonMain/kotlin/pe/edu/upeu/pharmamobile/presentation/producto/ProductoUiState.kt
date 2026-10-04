@@ -23,6 +23,7 @@ data class ProductoUiState(
     }
 
     data class FormularioProducto(
+        val id: Long? = null,
         val nombre: String = "",
         val precio: String = "",
         val stock: String = "",

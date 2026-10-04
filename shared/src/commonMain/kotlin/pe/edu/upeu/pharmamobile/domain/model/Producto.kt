@@ -7,7 +7,8 @@ data class Producto(
     val stock: Int = 10,
     val descripcion: String = "",
     val imagen: String = "",
-    val categoria: String = ""
+    val categoria: String = "",
+    val estado: Boolean = true
 ){
 
     // Regla de negocio: requiere reposición si stock <= 5

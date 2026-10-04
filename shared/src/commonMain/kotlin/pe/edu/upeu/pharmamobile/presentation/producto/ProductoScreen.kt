@@ -11,6 +11,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pe.edu.upeu.pharmamobile.domain.model.Producto
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 
 @Composable
 fun ProductoScreen(viewModel: ProductoViewModel) {
@@ -59,14 +62,24 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
         }
 
         Button(
-            onClick = { viewModel.registrarProducto() },
+            onClick = { viewModel.guardarProducto() },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             enabled = uiState.operacion !is ProductoUiState.Operacion.EnCurso
         ) {
             if (uiState.operacion is ProductoUiState.Operacion.EnCurso) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
-                Text("Registrar")
+                Text(if (formulario.id == null) "Registrar" else "Actualizar")
+            }
+        }
+
+        if (formulario.id != null) {
+            TextButton(
+                onClick = { viewModel.actualizarFormulario(id = null, nombre = "", precio = "", stock = "") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = uiState.operacion !is ProductoUiState.Operacion.EnCurso
+            ) {
+                Text("Cancelar edición")
             }
         }
 
@@ -92,7 +105,12 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
         when (val fase = uiState.fase) {
             ProductoUiState.Fase.Cargando -> IndicadorCarga()
             ProductoUiState.Fase.SinProductos -> EstadoVacio("No hay productos registrados")
-            is ProductoUiState.Fase.ConProductos -> ListaProductos(fase.productos)
+            is ProductoUiState.Fase.ConProductos -> ListaProductos(
+                productos = fase.productos,
+                onEdit = { viewModel.editarProducto(it) },
+                onDelete = { viewModel.eliminar(it.id) },
+                operacionEnCurso = uiState.operacion
+            )
             is ProductoUiState.Fase.Error -> EstadoError(fase.mensaje)
         }
     }
@@ -111,7 +129,12 @@ private fun EstadoVacio(mensaje: String) {
 }
 
 @Composable
-private fun ListaProductos(productos: List<Producto>) {
+private fun ListaProductos(
+    productos: List<Producto>,
+    onEdit: (Producto) -> Unit,
+    onDelete: (Producto) -> Unit,
+    operacionEnCurso: ProductoUiState.Operacion
+) {
     LazyColumn {
         items(productos) { producto ->
             Card(
@@ -124,21 +147,35 @@ private fun ListaProductos(productos: List<Producto>) {
                     modifier = Modifier.padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(producto.nombre, style = MaterialTheme.typography.bodyLarge)
                         Text("Precio: S/. ${producto.precio}", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "Stock: ${producto.stock}",
+                            color = when {
+                                producto.stock == 0 -> Color.Red
+                                producto.stock <= 5 -> Color(0xFFFFA500)
+                                else -> Color.Green
+                            }
+                        )
                         if (producto.requiereReposicion) {
                             Text("⚠️ Requiere reposición", color = Color(0xFFFFA500))
                         }
                     }
-                    Text(
-                        text = "Stock: ${producto.stock}",
-                        color = when {
-                            producto.stock == 0 -> Color.Red
-                            producto.stock <= 5 -> Color(0xFFFFA500)
-                            else -> Color.Green
+                    Row {
+                        IconButton(
+                            onClick = { onEdit(producto) },
+                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Editar")
                         }
-                    )
+                        IconButton(
+                            onClick = { onDelete(producto) },
+                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                        }
+                    }
                 }
             }
         }

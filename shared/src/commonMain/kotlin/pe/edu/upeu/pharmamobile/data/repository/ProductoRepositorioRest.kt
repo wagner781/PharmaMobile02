@@ -12,7 +12,7 @@ class ProductoRepositorioRest(
 ) : ProductoRepository {
 
     override suspend fun listar(): List<Producto> =
-        api.listar().contenido.map { it.toDomain() }
+        api.listar().contenido.map { it.toDomain() }.filter { it.estado }
 
     override suspend fun obtener(id: Long): Producto =
         api.obtener(id).toDomain()

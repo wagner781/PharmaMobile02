@@ -19,7 +19,8 @@ fun ProductoResponseDto.toDomain(): Producto = Producto(
     nombre = nombre,
     precio = precio,
     stock = stock,
-    categoria = categoriaNombre ?: "Sin categoría"
+    categoria = categoriaNombre ?: "Sin categoría",
+    estado = estado
 )
 
 fun Producto.toRequest(categoriaId: Long): ProductoRequestDto = ProductoRequestDto(
@@ -27,5 +28,5 @@ fun Producto.toRequest(categoriaId: Long): ProductoRequestDto = ProductoRequestD
     precio = precio,
     stock = stock,
     categoriaId = categoriaId,
-    estado = true
+    estado = estado
 )
