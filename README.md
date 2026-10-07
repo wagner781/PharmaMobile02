@@ -51,3 +51,19 @@ El proyecto implementa un manejo de errores fuertemente tipado utilizando `seale
 - **NoEncontrado:** Manejo de error 404 (ej. cuando se intenta actualizar o borrar un producto que ya no existe o fue eliminado).
 - **Conflicto:** Manejo de reglas de negocio del backend, mostrando mensajes al intentar romper restricciones de base de datos (ej: error 409).
 - **TiempoAgotado y SinConexion:** Manejo resiliente y controlado ante fallas de conectividad a través de capturas de excepciones de Ktor, comunicando el estado al usuario sin cerrar la aplicación.
+
+---
+
+## Capacidades Nativas
+
+El proyecto hace uso de capacidades específicas de Android e iOS, manteniendo el código de dominio y presentación unificado en Kotlin Multiplatform. Se implementaron dos estrategias:
+
+- **Formateo de Moneda (expect/actual):**
+  - Contrato: `expect fun formatearSoles`
+  - Implementación en Android: `NumberFormat.getCurrencyInstance` (`Formato.android.kt`)
+  - Implementación en iOS: `NSNumberFormatter` (`Formato.ios.kt`)
+- **Compartir Producto (Interfaz + Inyección):**
+  - Contrato: Interfaz `Compartidor` en `commonMain`.
+  - Implementación en Android: Uso de `Intent.ACTION_SEND` e `Intent.createChooser` (`CompartidorAndroid.kt`).
+  - Implementación en iOS: Uso de `UIActivityViewController` nativo (`CompartidorIos.kt`).
+  - Resolución: A través de Koin en `PlatformModule` por cada plataforma.
