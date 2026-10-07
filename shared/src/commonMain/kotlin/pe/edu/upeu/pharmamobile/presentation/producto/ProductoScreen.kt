@@ -14,6 +14,7 @@ import pe.edu.upeu.pharmamobile.domain.model.Producto
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 
 @Composable
 fun ProductoScreen(viewModel: ProductoViewModel) {
@@ -109,6 +110,7 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
                 productos = fase.productos,
                 onEdit = { viewModel.editarProducto(it) },
                 onDelete = { viewModel.eliminar(it.id) },
+                onShare = { viewModel.compartir(it) },
                 operacionEnCurso = uiState.operacion
             )
             is ProductoUiState.Fase.Error -> EstadoError(fase.mensaje)
@@ -130,9 +132,10 @@ private fun EstadoVacio(mensaje: String) {
 
 @Composable
 private fun ListaProductos(
-    productos: List<Producto>,
-    onEdit: (Producto) -> Unit,
-    onDelete: (Producto) -> Unit,
+    productos: List<ProductoUi>,
+    onEdit: (ProductoUi) -> Unit,
+    onDelete: (ProductoUi) -> Unit,
+    onShare: (ProductoUi) -> Unit,
     operacionEnCurso: ProductoUiState.Operacion
 ) {
     LazyColumn {
@@ -149,7 +152,7 @@ private fun ListaProductos(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(producto.nombre, style = MaterialTheme.typography.bodyLarge)
-                        Text("Precio: S/. ${producto.precio}", style = MaterialTheme.typography.bodyMedium)
+                        Text("Precio: ${producto.precio}", style = MaterialTheme.typography.bodyMedium)
                         Text(
                             text = "Stock: ${producto.stock}",
                             color = when {
@@ -168,6 +171,12 @@ private fun ListaProductos(
                             enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
                         ) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        }
+                        IconButton(
+                            onClick = { onShare(producto) },
+                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = "Compartir", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(
                             onClick = { onDelete(producto) },

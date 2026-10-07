@@ -13,13 +13,28 @@ import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
+import pe.edu.upeu.pharmamobile.domain.usecase.comoTextoParaCompartir
 
 class ProductoViewModel(
     private val listarProductosUseCase: ListarProductosUseCase,
     private val registrarProductoUseCase: RegistrarProductoUseCase,
     private val actualizarProductoUseCase: pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase,
-    private val eliminarProductoUseCase: EliminarProductoUseCase
+    private val eliminarProductoUseCase: EliminarProductoUseCase,
+    private val compartidor: pe.edu.upeu.pharmamobile.domain.platform.Compartidor
 ) : ViewModel() {
+
+    fun compartir(productoUi: pe.edu.upeu.pharmamobile.presentation.producto.ProductoUi) {
+        // Mapear de vuelta a Producto para el usecase si fuera necesario, o simplemente usar las propiedades
+        // Pero el usecase comoTextoParaCompartir espera un Producto.
+        // Vamos a mapear temporalmente:
+        val producto = pe.edu.upeu.pharmamobile.domain.model.Producto(
+            id = productoUi.id,
+            nombre = productoUi.nombre,
+            precio = productoUi.precioOriginal,
+            stock = productoUi.stock
+        )
+        compartidor.compartir(producto.comoTextoParaCompartir())
+    }
 
     private val _uiState = MutableStateFlow(ProductoUiState())
     val uiState: StateFlow<ProductoUiState> = _uiState.asStateFlow()
@@ -36,7 +51,7 @@ class ProductoViewModel(
                     _uiState.update {
                         it.copy(
                             fase = if (lista.isEmpty()) ProductoUiState.Fase.SinProductos
-                            else ProductoUiState.Fase.ConProductos(lista)
+                            else ProductoUiState.Fase.ConProductos(lista.map { p -> p.toUi() })
                         )
                     }
                 }
@@ -71,11 +86,11 @@ class ProductoViewModel(
         }
     }
 
-    fun editarProducto(producto: pe.edu.upeu.pharmamobile.domain.model.Producto) {
+    fun editarProducto(producto: pe.edu.upeu.pharmamobile.presentation.producto.ProductoUi) {
         actualizarFormulario(
             id = producto.id,
             nombre = producto.nombre,
-            precio = producto.precio.toString(),
+            precio = producto.precioOriginal.toString(),
             stock = producto.stock.toString()
         )
     }
