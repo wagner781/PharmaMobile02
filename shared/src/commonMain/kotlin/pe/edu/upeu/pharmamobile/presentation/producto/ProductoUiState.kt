@@ -11,7 +11,7 @@ data class ProductoUiState(
     sealed interface Fase {
         data object Cargando : Fase
         data object SinProductos : Fase
-        data class ConProductos(val productos: List<Producto>) : Fase
+        data class ConProductos(val productos: List<ProductoUi>) : Fase
         data class Error(val mensaje: String) : Fase
     }
 
