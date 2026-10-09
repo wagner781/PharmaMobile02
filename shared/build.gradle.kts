@@ -73,7 +73,7 @@ kotlin {
             implementation("io.ktor:ktor-client-logging:$ktor")
         }
         androidMain.dependencies {
-            implementation("io.ktor:ktor-client-okhttp:$ktor")
+            implementation("io.ktor:ktor-client-android:$ktor")
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:$ktor")

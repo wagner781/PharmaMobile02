@@ -1,7 +1,7 @@
 [versions]
 koin = "4.2.2"
 agp = "9.0.1"
-android-compileSdk = "37"
+android-compileSdk = "36"
 android-minSdk = "24"
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
