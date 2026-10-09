@@ -23,6 +23,13 @@ class ProductoViewModel(
     private val compartidor: pe.edu.upeu.pharmamobile.domain.platform.Compartidor
 ) : ViewModel() {
 
+    private val portapapeles = pe.edu.upeu.pharmamobile.platform.Portapapeles()
+
+    fun copiar(productoUi: pe.edu.upeu.pharmamobile.presentation.producto.ProductoUi) {
+        val texto = "ID: ${productoUi.id} - ${productoUi.nombre}"
+        portapapeles.copiar(texto)
+    }
+
     fun compartir(productoUi: pe.edu.upeu.pharmamobile.presentation.producto.ProductoUi) {
         // Mapear de vuelta a Producto para el usecase si fuera necesario, o simplemente usar las propiedades
         // Pero el usecase comoTextoParaCompartir espera un Producto.

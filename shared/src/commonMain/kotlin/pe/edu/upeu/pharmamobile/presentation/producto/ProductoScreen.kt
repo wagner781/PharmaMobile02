@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ContentCopy
 
 @Composable
 fun ProductoScreen(viewModel: ProductoViewModel) {
@@ -111,6 +112,7 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
                 onEdit = { viewModel.editarProducto(it) },
                 onDelete = { viewModel.eliminar(it.id) },
                 onShare = { viewModel.compartir(it) },
+                onCopy = { viewModel.copiar(it) },
                 operacionEnCurso = uiState.operacion
             )
             is ProductoUiState.Fase.Error -> EstadoError(fase.mensaje)
@@ -136,6 +138,7 @@ private fun ListaProductos(
     onEdit: (ProductoUi) -> Unit,
     onDelete: (ProductoUi) -> Unit,
     onShare: (ProductoUi) -> Unit,
+    onCopy: (ProductoUi) -> Unit,
     operacionEnCurso: ProductoUiState.Operacion
 ) {
     LazyColumn {
@@ -171,6 +174,12 @@ private fun ListaProductos(
                             enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
                         ) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        }
+                        IconButton(
+                            onClick = { onCopy(producto) },
+                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copiar")
                         }
                         IconButton(
                             onClick = { onShare(producto) },

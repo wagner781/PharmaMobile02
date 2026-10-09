@@ -67,3 +67,7 @@ El proyecto hace uso de capacidades específicas de Android e iOS, manteniendo e
   - Implementación en Android: Uso de `Intent.ACTION_SEND` e `Intent.createChooser` (`CompartidorAndroid.kt`).
   - Implementación en iOS: Uso de `UIActivityViewController` nativo (`CompartidorIos.kt`).
   - Resolución: A través de Koin en `PlatformModule` por cada plataforma.
+- **Copiado al portapapeles (expect/actual):**
+  - Contrato: `expect class Portapapeles` en `commonMain`.
+  - Implementación en Android: Uso de `ClipboardManager` inyectando el contexto de Koin (`Portapapeles.android.kt`).
+  - Implementación en iOS: Uso de `UIPasteboard` y `UIAlertController` (`Portapapeles.ios.kt`).
