@@ -18,7 +18,10 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ContentCopy
 
 @Composable
-fun ProductoScreen(viewModel: ProductoViewModel) {
+fun ProductoScreen(
+    viewModel: ProductoViewModel,
+    puedeRegistrar: Boolean = true
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formulario = uiState.formulario
 
@@ -27,7 +30,9 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Registro de Producto", style = MaterialTheme.typography.headlineSmall)
+        Text("Catálogo de Productos", style = MaterialTheme.typography.headlineSmall)
+
+        if (puedeRegistrar) {
 
         // Formulario
         OutlinedTextField(
@@ -100,6 +105,23 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
                 modifier = Modifier.padding(vertical = 4.dp)
             )
         }
+        } else {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Modo solo lectura: No cuenta con permisos para registrar o modificar productos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -109,6 +131,7 @@ fun ProductoScreen(viewModel: ProductoViewModel) {
             ProductoUiState.Fase.SinProductos -> EstadoVacio("No hay productos registrados")
             is ProductoUiState.Fase.ConProductos -> ListaProductos(
                 productos = fase.productos,
+                puedeRegistrar = puedeRegistrar,
                 onEdit = { viewModel.editarProducto(it) },
                 onDelete = { viewModel.eliminar(it.id) },
                 onShare = { viewModel.compartir(it) },
@@ -135,6 +158,7 @@ private fun EstadoVacio(mensaje: String) {
 @Composable
 private fun ListaProductos(
     productos: List<ProductoUi>,
+    puedeRegistrar: Boolean = true,
     onEdit: (ProductoUi) -> Unit,
     onDelete: (ProductoUi) -> Unit,
     onShare: (ProductoUi) -> Unit,
@@ -169,11 +193,13 @@ private fun ListaProductos(
                         }
                     }
                     Row {
-                        IconButton(
-                            onClick = { onEdit(producto) },
-                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        if (puedeRegistrar) {
+                            IconButton(
+                                onClick = { onEdit(producto) },
+                                enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Editar")
+                            }
                         }
                         IconButton(
                             onClick = { onCopy(producto) },
@@ -187,11 +213,13 @@ private fun ListaProductos(
                         ) {
                             Icon(Icons.Default.Share, contentDescription = "Compartir", tint = MaterialTheme.colorScheme.primary)
                         }
-                        IconButton(
-                            onClick = { onDelete(producto) },
-                            enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                        if (puedeRegistrar) {
+                            IconButton(
+                                onClick = { onDelete(producto) },
+                                enabled = operacionEnCurso !is ProductoUiState.Operacion.EnCurso
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
+                            }
                         }
                     }
                 }

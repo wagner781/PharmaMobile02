@@ -14,6 +14,7 @@ import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
 import pe.edu.upeu.pharmamobile.presentation.producto.ProductoViewModel
+import pe.edu.upeu.pharmamobile.presentation.sesion.SesionViewModel
 
 import pe.edu.upeu.pharmamobile.domain.repository.AuthRepository
 import pe.edu.upeu.pharmamobile.data.repository.AuthRepositorioRest
@@ -45,9 +46,10 @@ val domainModule = module {
     factory { CerrarSesionUseCase(get()) }
     factory { ObtenerSesionGuardadaUseCase(get()) }
 }
-
+ 
 val presentationModule = module {
     viewModelOf(::ProductoViewModel)
+    viewModelOf(::SesionViewModel)
 }
 
 fun initKoin(config: KoinAppDeclaration? = null) = startKoin {
