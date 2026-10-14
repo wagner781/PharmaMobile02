@@ -1,14 +1,7 @@
 package pe.edu.upeu.pharmamobile.data.local
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.CoreFoundation.CFDictionaryRef
-import platform.CoreFoundation.CFMutableDictionaryRef
 import platform.Foundation.NSUserDefaults
-import platform.Security.SecItemAdd
-import platform.Security.SecItemDelete
-import platform.Security.kSecClass
-import platform.Security.kSecClassGenericPassword
-import platform.Security.kSecValueData
 
 @OptIn(ExperimentalForeignApi::class)
 class AlmacenSeguroIos : AlmacenSeguro {
