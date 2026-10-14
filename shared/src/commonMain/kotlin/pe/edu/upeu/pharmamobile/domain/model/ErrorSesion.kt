@@ -6,3 +6,5 @@ sealed interface ErrorSesion {
     data object SinPermiso : ErrorSesion
     data object SinConexion : ErrorSesion
 }
+
+class SesionException(val error: ErrorSesion) : Exception()
