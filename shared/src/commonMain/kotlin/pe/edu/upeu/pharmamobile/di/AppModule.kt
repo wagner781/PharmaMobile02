@@ -20,7 +20,7 @@ private const val CATEGORIA_POR_DEFECTO = 1L
 expect val platformModule: Module
 
 val dataModule = module {
-    single { crearHttpClient(get()) }
+    single { crearHttpClient(get(), get()) }
     single { ProductoApi(get()) }
     single<ProductoRepository> {
         ProductoRepositorioRest(get(), CATEGORIA_POR_DEFECTO)
