@@ -71,9 +71,11 @@ kotlin {
             implementation("io.ktor:ktor-client-content-negotiation:$ktor")
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
             implementation("io.ktor:ktor-client-logging:$ktor")
+            implementation("io.ktor:ktor-client-auth:$ktor")
         }
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-android:$ktor")
+            implementation("androidx.security:security-crypto:1.1.0-alpha06")
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:$ktor")
