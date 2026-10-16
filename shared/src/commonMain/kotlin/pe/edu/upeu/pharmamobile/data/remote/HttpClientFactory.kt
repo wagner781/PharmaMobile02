@@ -58,6 +58,11 @@ fun crearHttpClient(
         }
 
         install(Logging) {
+            logger = object : io.ktor.client.plugins.logging.Logger {
+                override fun log(message: String) {
+                    println("KtorLog: $message")
+                }
+            }
             level = if (esDepuracion) LogLevel.HEADERS else LogLevel.NONE
             sanitizeHeader { nombre -> nombre == HttpHeaders.Authorization }
         }
