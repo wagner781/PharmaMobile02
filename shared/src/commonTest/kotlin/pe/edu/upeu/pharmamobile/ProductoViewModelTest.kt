@@ -35,10 +35,10 @@ class ProductoViewModelTest {
 
     private fun crearViewModel(repositorio: FakeProductoRepository): ProductoViewModel {
         return ProductoViewModel(
-            ListarProductosUseCase(repositorio),
-            RegistrarProductoUseCase(repositorio),
-            ActualizarProductoUseCase(repositorio),
-            EliminarProductoUseCase(repositorio)
+            repositorio = repositorio,
+            registrarProductoUseCase = RegistrarProductoUseCase(repositorio),
+            actualizarProductoUseCase = ActualizarProductoUseCase(repositorio),
+            eliminarProductoUseCase = EliminarProductoUseCase(repositorio)
         )
     }
 

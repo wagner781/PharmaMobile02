@@ -8,19 +8,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import pe.edu.upeu.pharmamobile.domain.usecase.ListarProductosUseCase
+import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.domain.usecase.RegistrarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
+import pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 import pe.edu.upeu.pharmamobile.domain.usecase.comoTextoParaCompartir
 
 class ProductoViewModel(
-    private val listarProductosUseCase: ListarProductosUseCase,
+    private val repositorio: ProductoRepository,
     private val registrarProductoUseCase: RegistrarProductoUseCase,
-    private val actualizarProductoUseCase: pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase,
+    private val actualizarProductoUseCase: ActualizarProductoUseCase,
     private val eliminarProductoUseCase: EliminarProductoUseCase,
-    private val compartidor: pe.edu.upeu.pharmamobile.domain.platform.Compartidor
+    private val compartidor: pe.edu.upeu.pharmamobile.domain.platform.Compartidor? = null
 ) : ViewModel() {
 
     private val portapapeles = pe.edu.upeu.pharmamobile.platform.Portapapeles()
@@ -31,46 +32,52 @@ class ProductoViewModel(
     }
 
     fun compartir(productoUi: pe.edu.upeu.pharmamobile.presentation.producto.ProductoUi) {
-        // Mapear de vuelta a Producto para el usecase si fuera necesario, o simplemente usar las propiedades
-        // Pero el usecase comoTextoParaCompartir espera un Producto.
-        // Vamos a mapear temporalmente:
         val producto = pe.edu.upeu.pharmamobile.domain.model.Producto(
             id = productoUi.id,
             nombre = productoUi.nombre,
             precio = productoUi.precioOriginal,
             stock = productoUi.stock
         )
-        compartidor.compartir(producto.comoTextoParaCompartir())
+        compartidor?.compartir(producto.comoTextoParaCompartir())
     }
 
     private val _uiState = MutableStateFlow(ProductoUiState())
     val uiState: StateFlow<ProductoUiState> = _uiState.asStateFlow()
 
     init {
-        cargarProductos()
+        viewModelScope.launch {
+            repositorio.observar().collect { productos ->
+                _uiState.update {
+                    it.copy(
+                        productos = productos,
+                        fase = faseDe(productos)
+                    )
+                }
+            }
+        }
+        sincronizar()
     }
 
-    fun cargarProductos() {
+    fun sincronizar() {
         viewModelScope.launch {
-            _uiState.update { it.copy(fase = ProductoUiState.Fase.Cargando) }
-            listarProductosUseCase()
-                .onSuccess { lista ->
-                    _uiState.update {
-                        it.copy(
-                            fase = if (lista.isEmpty()) ProductoUiState.Fase.SinProductos
-                            else ProductoUiState.Fase.ConProductos(lista.map { p -> p.toUi() })
-                        )
+            _uiState.update { it.copy(sincronizando = true) }
+            val resultado = resultadoDe { repositorio.sincronizar() }
+            _uiState.update {
+                it.copy(
+                    sincronizando = false,
+                    avisoRed = resultado.exceptionOrNull()?.let { fallo ->
+                        "Sin conexión: mostrando datos guardados"
                     }
-                }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            fase = ProductoUiState.Fase.Error(error.message ?: "Error desconocido")
-                        )
-                    }
-                }
+                )
+            }
         }
     }
+
+    private suspend fun <T> resultadoDe(bloque: suspend () -> T): Result<T> = runCatching { bloque() }
+
+    private fun faseDe(productos: List<pe.edu.upeu.pharmamobile.domain.model.Producto>): ProductoUiState.Fase =
+        if (productos.isEmpty()) ProductoUiState.Fase.SinProductos
+        else ProductoUiState.Fase.ConProductos(productos.map { it.toUi() })
 
     fun actualizarFormulario(
         id: Long? = uiState.value.formulario.id,
@@ -121,12 +128,11 @@ class ProductoViewModel(
             )
             resultado.fold(
                 onSuccess = { producto ->
-                    cargarProductos() // Actualizar lista
                     _uiState.update {
                         it.copy(
                             operacion = ProductoUiState.Operacion.Inactiva,
                             mensajeExito = "Producto registrado: ${producto.nombre}",
-                            formulario = ProductoUiState.FormularioProducto() // Limpiar formulario
+                            formulario = ProductoUiState.FormularioProducto()
                         )
                     }
                 },
@@ -139,7 +145,6 @@ class ProductoViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Actualizar), mensajeExito = null) }
             
-            // Validaciones manuales básicas que hacía el RegistrarProductoUseCase
             val nombre = uiState.value.formulario.nombre.trim()
             val precioStr = uiState.value.formulario.precio
             val stockStr = uiState.value.formulario.stock
@@ -166,7 +171,6 @@ class ProductoViewModel(
             val resultado = actualizarProductoUseCase(producto)
             resultado.fold(
                 onSuccess = { prod ->
-                    cargarProductos()
                     _uiState.update {
                         it.copy(
                             operacion = ProductoUiState.Operacion.Inactiva,
@@ -184,7 +188,6 @@ class ProductoViewModel(
         _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Eliminar)) }
         eliminarProductoUseCase(id)
             .onSuccess {
-                cargarProductos()
                 _uiState.update {
                     it.copy(
                         operacion = ProductoUiState.Operacion.Inactiva,

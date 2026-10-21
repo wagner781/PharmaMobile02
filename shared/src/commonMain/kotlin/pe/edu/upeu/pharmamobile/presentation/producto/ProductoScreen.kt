@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ContentCopy
 
+import androidx.compose.material.icons.filled.Refresh
+
 @Composable
 fun ProductoScreen(
     viewModel: ProductoViewModel,
@@ -30,7 +32,37 @@ fun ProductoScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Catálogo de Productos", style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Catálogo de Productos", style = MaterialTheme.typography.headlineSmall)
+            IconButton(
+                onClick = { viewModel.sincronizar() },
+                enabled = !uiState.sincronizando
+            ) {
+                if (uiState.sincronizando) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "Sincronizar")
+                }
+            }
+        }
+
+        if (uiState.avisoRed != null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                Text(
+                    text = uiState.avisoRed!!,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
 
         if (puedeRegistrar) {
 
@@ -190,6 +222,20 @@ private fun ListaProductos(
                         )
                         if (producto.requiereReposicion) {
                             Text("⚠️ Requiere reposición", color = Color(0xFFFFA500))
+                        }
+                        if (producto.id < 0) {
+                            Surface(
+                                shape = MaterialTheme.shapes.extraSmall,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = "⏳ Pendiente de envío (ID: ${producto.id})",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                     Row {
