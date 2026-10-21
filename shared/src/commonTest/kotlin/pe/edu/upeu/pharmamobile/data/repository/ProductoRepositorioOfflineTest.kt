@@ -1,6 +1,5 @@
 package pe.edu.upeu.pharmamobile.data.repository
 
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -16,9 +15,7 @@ import kotlin.test.assertTrue
 class ProductoRepositorioOfflineTest {
 
     private fun baseEnMemoria(): PharmaDb {
-        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
-        PharmaDb.Schema.create(driver)
-        return PharmaDb(driver)
+        return PharmaDb(testDriver())
     }
 
     private class FakeRemoteApi(
