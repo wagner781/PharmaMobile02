@@ -12,6 +12,10 @@ import pe.edu.upeu.pharmamobile.data.remote.dto.ProductoDto
 import pe.edu.upeu.pharmamobile.data.remote.dto.ProductoRequestDto
 import pe.edu.upeu.pharmamobile.data.remote.dto.ProductoResponseDto
 import pe.edu.upeu.pharmamobile.data.remote.dto.PaginaResponseDto
+import pe.edu.upeu.pharmamobile.data.mapper.toDomain
+import pe.edu.upeu.pharmamobile.data.mapper.toRequest
+import pe.edu.upeu.pharmamobile.domain.model.Producto
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 
 class ProductoApi(private val client: HttpClient) {
     suspend fun obtenerProductos(limite: Int = 10): List<ProductoDto> =
@@ -24,6 +28,24 @@ class ProductoApi(private val client: HttpClient) {
             parameter("pagina", pagina)
             parameter("tamanio", tamanio)
         }.body()
+
+    suspend fun listar(): List<Producto> = try {
+        listar(pagina = 0, tamanio = 100).contenido.map { it.toDomain() }.filter { it.estado }
+    } catch (e: Exception) {
+        if (e is io.ktor.utils.io.errors.IOException || e is io.ktor.client.plugins.HttpRequestTimeoutException) {
+            throw ErrorApi.SinConexion
+        }
+        throw e
+    }
+
+    suspend fun registrar(producto: Producto, categoriaId: Long = 1L): Producto = try {
+        crear(producto.toRequest(categoriaId)).toDomain()
+    } catch (e: Exception) {
+        if (e is io.ktor.utils.io.errors.IOException || e is io.ktor.client.plugins.HttpRequestTimeoutException) {
+            throw ErrorApi.SinConexion
+        }
+        throw e
+    }
 
     suspend fun obtener(id: Long): ProductoResponseDto =
         client.get("/api/v1/productos/$id").body()

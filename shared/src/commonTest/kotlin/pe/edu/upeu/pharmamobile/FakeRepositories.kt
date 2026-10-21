@@ -12,6 +12,13 @@ class FakeProductoRepository(
 
     private val db = initialProductos.toMutableList()
     private var nextId = (db.maxOfOrNull { it.id } ?: 0L) + 1L
+    private val productosFlow = kotlinx.coroutines.flow.MutableStateFlow(initialProductos)
+
+    override fun observar(): kotlinx.coroutines.flow.Flow<List<Producto>> = productosFlow
+
+    override suspend fun sincronizar() {
+        checkError()
+    }
 
     override suspend fun listar(): List<Producto> {
         kotlinx.coroutines.delay(10)

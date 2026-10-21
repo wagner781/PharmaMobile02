@@ -25,6 +25,8 @@ import pe.edu.upeu.pharmamobil.db.PharmaDb
 import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriver
 import pe.edu.upeu.pharmamobile.data.local.ProductoLocal
 
+import pe.edu.upeu.pharmamobile.data.repository.ProductoRepositorioOffline
+
 private const val CATEGORIA_POR_DEFECTO = 1L
 
 expect val platformModule: Module
@@ -35,7 +37,7 @@ val dataModule = module {
     single { crearHttpClient(get(), get()) }
     single { ProductoApi(get()) }
     single<ProductoRepository> {
-        ProductoRepositorioRest(get(), CATEGORIA_POR_DEFECTO)
+        ProductoRepositorioOffline(get(), get())
     }
     single<AuthRepository> {
         AuthRepositorioRest(get(), get())

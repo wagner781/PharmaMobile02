@@ -11,8 +11,16 @@ class ProductoRepositorioRest(
     private val categoriaPorDefecto: Long
 ) : ProductoRepository {
 
+    override fun observar(): kotlinx.coroutines.flow.Flow<List<Producto>> = kotlinx.coroutines.flow.flow {
+        emit(listar())
+    }
+
+    override suspend fun sincronizar() {
+        // No-op en implementación REST pura
+    }
+
     override suspend fun listar(): List<Producto> =
-        api.listar().contenido.map { it.toDomain() }.filter { it.estado }
+        api.listar()
 
     override suspend fun obtener(id: Long): Producto =
         api.obtener(id).toDomain()
