@@ -120,3 +120,80 @@ Cargados automáticamente mediante migraciones de Flyway:
    - Contrato: `expect class Portapapeles` en `commonMain`.
    - Android: `ClipboardManager` inyectando contexto (`Portapapeles.android.kt`).
    - iOS: `UIPasteboard` y `UIAlertController` (`Portapapeles.ios.kt`).
+
+---
+
+## Persistencia Local con SQLDelight y Estrategia Offline-First (Laboratorio 11)
+
+La aplicación implementa una arquitectura **offline-first** donde la base de datos local SQLite pasa a ser la **única fuente de verdad** (*Single Source of Truth*), garantizando que la app continúe funcionando de forma transparente aún sin conexión a internet.
+
+### 1. Principios de la Arquitectura
+- **Única Fuente de Verdad:** La interfaz gráfica nunca consulta directamente a la red al abrirse; se suscribe mediante un `Flow` reactivo a la base de datos local. La red opera como un proceso en segundo plano que mantiene sincronizada dicha base.
+- **Eliminación de Recargas Manuales:** Se eliminan todas las llamadas manuales de recarga (`cargarProductos()`); cualquier inserción o actualización local dispara automáticamente la emisión del `Flow` hacia el ViewModel y la UI.
+- **Identificadores Locales Negativos:** Los registros creados sin red reciben identificadores negativos (`minOf(menor, 0L) - 1L`, ej. `-1`, `-2`) para evitar colisiones con los IDs autoincrementales asignados por PharmaSoft y reconocer de un vistazo los registros locales aún no sincronizados.
+
+### 2. Esquema SQLDelight (`Producto.sq`)
+Ubicado en `shared/src/commonMain/sqldelight/pe/edu/upeu/pharmamobil/db/Producto.sq`:
+```sql
+CREATE TABLE producto (
+    id INTEGER NOT NULL PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    precio REAL NOT NULL,
+    stock INTEGER NOT NULL,
+    pendiente INTEGER NOT NULL DEFAULT 0
+);
+
+listarTodos:
+SELECT * FROM producto ORDER BY nombre ASC;
+
+listarPendientes:
+SELECT * FROM producto WHERE pendiente = 1;
+
+insertar:
+INSERT OR REPLACE INTO producto
+VALUES (?, ?, ?, ?, ?);
+
+borrarSincronizados:
+DELETE FROM producto WHERE pendiente = 0;
+
+siguienteIdLocal:
+SELECT COALESCE(MIN(id), 0) FROM producto;
+
+borrarPorId:
+DELETE FROM producto WHERE id = ?;
+```
+
+### 3. Drivers de Base de Datos Multiplataforma
+- **Contrato Común:** `CreadorDeDriver` en `commonMain/data/local/` con `fun crear(): SqlDriver`.
+- **Android:** `CreadorDeDriverAndroid` utilizando `AndroidSqliteDriver(PharmaDb.Schema, context, "pharma.db")`.
+- **iOS:** `CreadorDeDriverIos` utilizando `NativeSqliteDriver(PharmaDb.Schema, "pharma.db")`.
+- **Pruebas Unitarias:** `JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)` con creación aislada de esquema por cada test.
+- **Inyección con Koin:** Registrado en los módulos de plataforma (`platformModule`) y expuesta la instancia `PharmaDb` en el módulo común `dataModule`.
+
+### 4. Regla Crítica de Sincronización: Subir y Luego Bajar
+En `ProductoRepositorioOffline`:
+```kotlin
+override suspend fun sincronizar() {
+    subirPendientes()
+    local.reemplazarSincronizados(remoto.listar())
+}
+```
+1. **Primero subir (`subirPendientes`):** Recorre los elementos con `pendiente = 1`, los envía a PharmaSoft (`remoto.registrar`) y los limpia de la cola local una vez aceptados por el backend.
+2. **Luego bajar (`reemplazarSincronizados`):** Descarga la lista actualizada desde el servidor y reemplaza dentro de una transacción atómica únicamente las filas sincronizadas (`borrarSincronizados()`), preservando cualquier trabajo offline en progreso.
+3. **Resiliencia de Red:** La operación se protege mediante `intentar { ... }` capturando `ErrorApi.SinConexion`, lo que garantiza que una pérdida de señal no interrumpa el funcionamiento local.
+
+### 5. Verificación del Ciclo Offline Completo
+Validación en 6 puntos sobre el emulador Android y el servidor PharmaSoft:
+1. **Con red:** Apertura de la aplicación, inicio de sesión y sincronización inicial de productos.
+2. **Activación de Modo Avión:** Cierre y reapertura de la aplicación en modo avión.
+3. **Persistencia offline:** Los productos se muestran inmediatamente desde la base local con el aviso *"Sin conexión: mostrando datos guardados"*.
+4. **Registro sin conexión:** Creación de un producto en modo avión con ID local negativo (`-1`) y etiqueta *"⏳ Pendiente de envío"*.
+5. **Reconexión y sincronización:** Desactivación de modo avión y pulsación del botón sincronizar; el ID temporal es reemplazado por el ID positivo real del servidor y se retira el aviso de red.
+6. **Verificación en Swagger:** Comprobación en Swagger (`GET /api/v1/productos`) de que el producto existe en PharmaSoft con su ID asignado.
+
+### 6. Pruebas Unitarias en `commonTest`
+Implementadas en `ProductoRepositorioOfflineTest.kt` con base en memoria (`JdbcSqliteDriver`):
+1. `sin red el producto queda pendiente y la pantalla lo ve`: Valida la persistencia local con ID negativo y emisión por Flow sin red.
+2. `con red se sincroniza y actualiza la lista local`: Valida la descarga e inserción de datos remotos en la base local.
+3. `sincronizar sube pendientes antes de bajar del servidor`: Valida el flujo completo de subida previa y posterior recepción de identificadores reales.
+- **Resultado:** 100% de pruebas aprobadas (`BUILD SUCCESSFUL`).

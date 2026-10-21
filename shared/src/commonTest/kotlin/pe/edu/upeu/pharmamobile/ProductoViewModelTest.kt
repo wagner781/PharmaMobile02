@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -98,7 +99,7 @@ class ProductoViewModelTest {
         
         // Disparamos eliminación
         viewModel.eliminar(1L)
-        kotlinx.coroutines.yield()
+        runCurrent()
         
         // El estado debe ser EnCurso inmediatamente
         val estadoDurante = viewModel.uiState.value

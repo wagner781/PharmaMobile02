@@ -90,6 +90,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.sqldelight.jvm)
+            implementation("io.ktor:ktor-client-mock:$ktor")
         }
     }
 }

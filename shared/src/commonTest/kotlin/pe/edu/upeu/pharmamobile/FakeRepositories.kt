@@ -36,6 +36,7 @@ class FakeProductoRepository(
         checkError()
         val nuevo = producto.copy(id = nextId++)
         db.add(nuevo)
+        productosFlow.value = db.filter { it.estado }.toList()
         return nuevo
     }
 
@@ -44,6 +45,7 @@ class FakeProductoRepository(
         val index = db.indexOfFirst { it.id == producto.id }
         if (index == -1) throw ErrorApiException(ErrorApi.NoEncontrado)
         db[index] = producto
+        productosFlow.value = db.filter { it.estado }.toList()
         return producto
     }
 
@@ -54,6 +56,7 @@ class FakeProductoRepository(
         if (index == -1) throw ErrorApiException(ErrorApi.NoEncontrado)
         val p = db[index]
         db[index] = p.copy(estado = false)
+        productosFlow.value = db.filter { it.estado }.toList()
     }
 
     private fun checkError() {
