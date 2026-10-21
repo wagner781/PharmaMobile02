@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 val ktor = "3.6.0"
@@ -72,17 +73,31 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
             implementation("io.ktor:ktor-client-logging:$ktor")
             implementation("io.ktor:ktor-client-auth:$ktor")
+
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines)
         }
         androidMain.dependencies {
             implementation("io.ktor:ktor-client-android:$ktor")
             implementation("androidx.security:security-crypto:1.1.0-alpha06")
+            implementation(libs.sqldelight.android)
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:$ktor")
+            implementation(libs.sqldelight.native)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.sqldelight.jvm)
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("PharmaDb") {
+            packageName.set("pe.edu.upeu.pharmamobil.db")
         }
     }
 }
