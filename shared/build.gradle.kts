@@ -91,6 +91,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.sqldelight.jvm)
             implementation("io.ktor:ktor-client-mock:$ktor")
+            implementation("org.slf4j:slf4j-nop:2.0.16")
         }
     }
 }
