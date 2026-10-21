@@ -21,12 +21,15 @@ import pe.edu.upeu.pharmamobile.data.repository.AuthRepositorioRest
 import pe.edu.upeu.pharmamobile.domain.usecase.IniciarSesionUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.CerrarSesionUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.ObtenerSesionGuardadaUseCase
+import pe.edu.upeu.pharmamobil.db.PharmaDb
+import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriver
 
 private const val CATEGORIA_POR_DEFECTO = 1L
 
 expect val platformModule: Module
 
 val dataModule = module {
+    single { PharmaDb(get<CreadorDeDriver>().crear()) }
     single { crearHttpClient(get(), get()) }
     single { ProductoApi(get()) }
     single<ProductoRepository> {
