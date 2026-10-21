@@ -27,7 +27,16 @@ class ProductoRepositorioOffline(
 
     private suspend fun subirPendientes() {
         local.pendientes().forEach { pendiente ->
-            remoto.registrar(pendiente)
+            try {
+                remoto.registrar(pendiente)
+                local.borrar(pendiente.id)
+            } catch (e: Exception) {
+                if (e is io.ktor.client.plugins.ClientRequestException && e.response.status.value == 409) {
+                    local.borrar(pendiente.id)
+                } else {
+                    throw e
+                }
+            }
         }
     }
 

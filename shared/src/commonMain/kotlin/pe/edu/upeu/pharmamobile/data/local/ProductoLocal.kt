@@ -42,6 +42,10 @@ class ProductoLocal(base: PharmaDb) {
             }
         }
     }
+
+    fun borrar(id: Long) {
+        consultas.borrarPorId(id)
+    }
 }
 
 private fun pe.edu.upeu.pharmamobil.db.Producto.aDominio(): Producto = Producto(

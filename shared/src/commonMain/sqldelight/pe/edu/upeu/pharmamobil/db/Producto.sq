@@ -23,3 +23,6 @@ siguienteIdLocal:
 -- COALESCE evita el NULL de la tabla vacia; el minOf de Kotlin
 -- garantiza que el id resultante sea siempre negativo.
 SELECT COALESCE(MIN(id), 0) FROM producto;
+
+borrarPorId:
+DELETE FROM producto WHERE id = ?;
