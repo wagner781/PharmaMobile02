@@ -45,6 +45,7 @@ class ProductoViewModel(
     val uiState: StateFlow<ProductoUiState> = _uiState.asStateFlow()
 
     init {
+        refrescarAntiguedad()
         viewModelScope.launch {
             repositorio.observar().collect { productos ->
                 _uiState.update {
@@ -58,10 +59,34 @@ class ProductoViewModel(
         sincronizar()
     }
 
+    fun refrescarAntiguedad() {
+        viewModelScope.launch {
+            val timestamp = runCatching { repositorio.obtenerUltimaSincronizacion() }.getOrNull()
+            val texto = pe.edu.upeu.pharmamobile.platform.formatearAntiguedad(timestamp)
+            _uiState.update { it.copy(antiguedadSincronizacion = texto) }
+        }
+    }
+
+    fun simularSincronizacionAntigua(diasAtras: Long = 2) {
+        viewModelScope.launch {
+            val millisAtras = pe.edu.upeu.pharmamobile.platform.tiempoActualMillis() - (diasAtras * 24 * 60 * 60 * 1000L)
+            runCatching { repositorio.guardarUltimaSincronizacion(millisAtras) }
+            refrescarAntiguedad()
+        }
+    }
+
+    fun limpiarBaseLocalParaPrueba() {
+        viewModelScope.launch {
+            runCatching { repositorio.limpiarTodoLocal() }
+            refrescarAntiguedad()
+        }
+    }
+
     fun sincronizar() {
         viewModelScope.launch {
             _uiState.update { it.copy(sincronizando = true) }
             val resultado = resultadoDe { repositorio.sincronizar() }
+            refrescarAntiguedad()
             _uiState.update {
                 it.copy(
                     sincronizando = false,

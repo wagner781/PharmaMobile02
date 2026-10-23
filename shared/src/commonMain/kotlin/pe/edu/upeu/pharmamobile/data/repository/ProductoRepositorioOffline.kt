@@ -23,6 +23,21 @@ class ProductoRepositorioOffline(
     override suspend fun sincronizar() {
         subirPendientes()
         local.reemplazarSincronizados(remoto.listar())
+        local.guardarUltimaSincronizacion(pe.edu.upeu.pharmamobile.platform.tiempoActualMillis())
+    }
+
+    override fun obtenerUltimaSincronizacion(): Long? = local.obtenerUltimaSincronizacion()
+    override fun guardarUltimaSincronizacion(timestamp: Long) = local.guardarUltimaSincronizacion(timestamp)
+
+    override suspend fun eliminar(id: Long) {
+        local.borrar(id)
+        if (id > 0) {
+            intentar { remoto.eliminar(id) }
+        }
+    }
+
+    override suspend fun limpiarTodoLocal() {
+        local.limpiarTodo()
     }
 
     private suspend fun subirPendientes() {

@@ -13,8 +13,12 @@ interface ProductoRepository {
     /** Sube lo pendiente y luego trae la lista del servidor. */
     suspend fun sincronizar()
 
+    fun obtenerUltimaSincronizacion(): Long? = null
+    fun guardarUltimaSincronizacion(timestamp: Long) {}
+
     suspend fun listar(): List<Producto> = emptyList()
     suspend fun obtener(id: Long): Producto = throw UnsupportedOperationException()
     suspend fun actualizar(producto: Producto): Producto = throw UnsupportedOperationException()
     suspend fun eliminar(id: Long) {}
+    suspend fun limpiarTodoLocal() {}
 }

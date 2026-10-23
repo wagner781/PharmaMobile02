@@ -9,3 +9,6 @@ actual fun formatearSoles(valor: Double): String {
     return formateador.stringFromNumber(NSNumber(valor))
         ?: "S/ $valor"
 }
+
+actual fun tiempoActualMillis(): Long =
+    (platform.Foundation.NSDate().timeIntervalSince1970 * 1000.0).toLong()

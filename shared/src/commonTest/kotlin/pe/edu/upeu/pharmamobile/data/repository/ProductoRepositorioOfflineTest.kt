@@ -10,6 +10,7 @@ import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ProductoRepositorioOfflineTest {
@@ -20,7 +21,8 @@ class ProductoRepositorioOfflineTest {
 
     private class FakeRemoteApi(
         val productosRemotos: MutableList<Producto> = mutableListOf(),
-        var debeFallar: Boolean = false
+        var debeFallar: Boolean = false,
+        var fallarSoloAlSubir: Boolean = false
     ) : ProductoApi(HttpClient()) {
         val llamadasRegistro = mutableListOf<Producto>()
 
@@ -30,8 +32,11 @@ class ProductoRepositorioOfflineTest {
         }
 
         override suspend fun registrar(producto: Producto, categoriaId: Long): Producto {
-            if (debeFallar) throw ErrorApi.SinConexion
+            if (debeFallar || fallarSoloAlSubir) throw ErrorApi.SinConexion
             llamadasRegistro.add(producto)
+            // Evitar duplicar en la lista remota si ya existe por nombre
+            val existente = productosRemotos.find { it.nombre == producto.nombre }
+            if (existente != null) return existente
             val guardado = producto.copy(id = 100L + llamadasRegistro.size)
             productosRemotos.add(guardado)
             return guardado
@@ -46,57 +51,106 @@ class ProductoRepositorioOfflineTest {
     }
 
     @Test
-    fun `sin red el producto queda pendiente y la pantalla lo ve`() = runTest {
-        val apiFalla = FakeRemoteApi(debeFallar = true)
-        val (repo, local) = repositorioCon(apiFalla)
-
-        repo.registrar(Producto(0, "Ibuprofeno", 4.5, 20))
-
-        val lista = repo.observar().first()
-        assertEquals(1, lista.size)
-        assertEquals("Ibuprofeno", lista.first().nombre)
-        assertTrue(lista.first().id < 0, "El ID del producto creado sin red debe ser negativo")
-        assertEquals(1, local.pendientes().size, "Debe quedar 1 producto en pendientes")
-    }
-
-    @Test
-    fun `con red se sincroniza y actualiza la lista local`() = runTest {
-        val productoRemoto = Producto(15, "Amoxicilina 500mg", 12.0, 30)
-        val apiOk = FakeRemoteApi(productosRemotos = mutableListOf(productoRemoto), debeFallar = false)
-        val (repo, _) = repositorioCon(apiOk)
+    fun test1_sincronizacionConRedDisponibleSubePendientesYReemplazaRemotos() = runTest {
+        val remoto1 = Producto(10, "Paracetamol 500mg", 2.50, 100)
+        val remoto2 = Producto(20, "Amoxicilina 250mg", 8.00, 50)
+        val api = FakeRemoteApi(productosRemotos = mutableListOf(remoto1, remoto2), debeFallar = false)
+        val (repo, local) = repositorioCon(api)
 
         repo.sincronizar()
 
         val lista = repo.observar().first()
-        assertEquals(1, lista.size)
-        assertEquals(15L, lista.first().id)
-        assertEquals("Amoxicilina 500mg", lista.first().nombre)
+        assertEquals(2, lista.size, "Debe traer los 2 productos del servidor")
+        assertEquals(0, local.pendientes().size, "No debe haber pendientes")
+        assertNotNull(repo.obtenerUltimaSincronizacion(), "Debe guardar la marca de tiempo de sincronización")
     }
 
     @Test
-    fun `sincronizar sube pendientes antes de bajar del servidor`() = runTest {
+    fun test2_registroSinRedGuardaLocalConMarcaPendienteYEmiteEnFlow() = runTest {
+        val apiSinRed = FakeRemoteApi(debeFallar = true)
+        val (repo, local) = repositorioCon(apiSinRed)
+
+        val registrado = repo.registrar(Producto(0, "Ibuprofeno 400mg", 4.50, 30))
+
+        assertTrue(registrado.id < 0, "El ID retornado debe ser negativo")
+        val listaFlow = repo.observar().first()
+        assertEquals(1, listaFlow.size, "El Flow reactivo debe emitir el nuevo producto de inmediato")
+        assertEquals("Ibuprofeno 400mg", listaFlow.first().nombre)
+        assertEquals(1, local.pendientes().size, "Debe registrarse con bandera pendiente en SQLite local")
+    }
+
+    @Test
+    fun test3_reconexionSubeEfectivamenteLosRegistrosLocalesAlServidor() = runTest {
         val api = FakeRemoteApi(debeFallar = true)
         val (repo, local) = repositorioCon(api)
 
-        // 1. Registro sin red
-        repo.registrar(Producto(0, "Paracetamol", 5.0, 10))
+        // Registro desconectado
+        repo.registrar(Producto(0, "Alcohol 70%", 7.00, 40))
         assertEquals(1, local.pendientes().size)
-        assertEquals(-1L, repo.observar().first().first().id)
 
-        // 2. Vuelve la red y sincronizamos
+        // Se restablece la conexión y sincroniza
         api.debeFallar = false
         repo.sincronizar()
 
-        // 3. Verificamos que se envió el pendiente al servidor
-        assertEquals(1, api.llamadasRegistro.size)
-        assertEquals("Paracetamol", api.llamadasRegistro.first().nombre)
+        assertEquals(1, api.llamadasRegistro.size, "Debe llamar a la API remota para subir el pendiente")
+        assertEquals(0, local.pendientes().size, "La cola de pendientes debe quedar en cero")
+        val lista = repo.observar().first()
+        assertEquals(1, lista.size)
+        assertTrue(lista.first().id > 0, "El producto local ahora tiene el ID definitivo del servidor")
+    }
 
-        // 4. Verificamos que la cola local de pendientes quedó limpia
-        assertEquals(0, local.pendientes().size)
+    @Test
+    fun test4_bajadaDelServidorNoSobreescribeNiBorraRegistrosLocalesPendientes() = runTest {
+        val api = FakeRemoteApi(
+            productosRemotos = mutableListOf(Producto(5, "Aspirina 100mg", 3.00, 20)),
+            fallarSoloAlSubir = true // Simula fallo parcial en subida pero lectura posible
+        )
+        val (repo, local) = repositorioCon(api)
 
-        // 5. Verificamos que ahora el producto tiene el ID positivo asignado por el servidor
-        val productosFinales = repo.observar().first()
-        assertEquals(1, productosFinales.size)
-        assertTrue(productosFinales.first().id > 0, "El ID debe ser positivo tras sincronizar")
+        // Guardamos un producto pendiente localmente
+        val localPendiente = local.guardarPendiente(Producto(0, "Jarabe Tos", 15.00, 10))
+        assertEquals(1, local.pendientes().size)
+
+        // Bajamos datos del servidor reemplazando únicamente sincronizados
+        local.reemplazarSincronizados(listOf(Producto(5, "Aspirina 100mg", 3.00, 20)))
+
+        val listaTotal = repo.observar().first()
+        assertEquals(2, listaTotal.size, "Debe contener tanto el remoto bajado como el local pendiente")
+        assertEquals(1, local.pendientes().size, "El registro pendiente no fue borrado ni sobreescrito")
+        assertTrue(listaTotal.any { it.id == localPendiente.id }, "El producto pendiente sigue presente")
+    }
+
+    @Test
+    fun test5_identificadoresTemporalesSinColisionConIdsDelServidor() = runTest {
+        val apiSinRed = FakeRemoteApi(debeFallar = true)
+        val (repo, _) = repositorioCon(apiSinRed)
+
+        val prod1 = repo.registrar(Producto(0, "Termómetro", 25.00, 15))
+        val prod2 = repo.registrar(Producto(0, "Oxímetro", 55.00, 10))
+
+        assertEquals(-1L, prod1.id, "Primer ID temporal debe ser -1")
+        assertEquals(-2L, prod2.id, "Segundo ID temporal debe ser -2 decremental")
+        assertTrue(prod1.id < 0 && prod2.id < 0, "Todos los IDs locales temporales son negativos")
+    }
+
+    @Test
+    fun test6_idempotenciaDeSincronizacionNoDuplicaRegistros() = runTest {
+        val api = FakeRemoteApi(
+            productosRemotos = mutableListOf(Producto(50, "Gasa Estéril", 1.50, 200)),
+            debeFallar = false
+        )
+        val (repo, local) = repositorioCon(api)
+
+        // Primera sincronización
+        repo.sincronizar()
+        val conteo1 = repo.observar().first().size
+
+        // Segunda sincronización consecutiva
+        repo.sincronizar()
+        val conteo2 = repo.observar().first().size
+
+        assertEquals(1, conteo1)
+        assertEquals(conteo1, conteo2, "Ejecutar sincronizar() dos veces seguidas no debe duplicar registros")
+        assertEquals(0, local.pendientes().size, "La cola de pendientes se mantiene en 0")
     }
 }

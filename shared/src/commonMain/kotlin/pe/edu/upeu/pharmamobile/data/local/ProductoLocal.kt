@@ -10,6 +10,14 @@ import pe.edu.upeu.pharmamobile.domain.model.Producto
 
 class ProductoLocal(base: PharmaDb) {
     private val consultas = base.productoQueries
+    private val sincronizacion = base.sincronizacionQueries
+
+    fun guardarUltimaSincronizacion(timestamp: Long) {
+        sincronizacion.guardarInstante(timestamp)
+    }
+
+    fun obtenerUltimaSincronizacion(): Long? =
+        sincronizacion.obtenerInstante().executeAsOneOrNull()
 
     fun observar(): Flow<List<Producto>> =
         consultas.listarTodos()
@@ -45,6 +53,11 @@ class ProductoLocal(base: PharmaDb) {
 
     fun borrar(id: Long) {
         consultas.borrarPorId(id)
+    }
+
+    fun limpiarTodo() {
+        consultas.borrarTodos()
+        sincronizacion.borrarInstante()
     }
 }
 

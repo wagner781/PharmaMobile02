@@ -26,3 +26,6 @@ SELECT COALESCE(MIN(id), 0) FROM producto;
 
 borrarPorId:
 DELETE FROM producto WHERE id = ?;
+
+borrarTodos:
+DELETE FROM producto;

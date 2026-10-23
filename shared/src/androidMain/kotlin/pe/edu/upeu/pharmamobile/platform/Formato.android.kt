@@ -5,3 +5,5 @@ import java.util.Locale
 
 actual fun formatearSoles(valor: Double): String =
     NumberFormat.getCurrencyInstance(Locale("es", "PE")).format(valor)
+
+actual fun tiempoActualMillis(): Long = System.currentTimeMillis()

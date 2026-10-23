@@ -1,0 +1,14 @@
+CREATE TABLE sincronizacion (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT 1,
+    timestamp INTEGER NOT NULL
+);
+
+guardarInstante:
+INSERT OR REPLACE INTO sincronizacion (id, timestamp)
+VALUES (1, ?);
+
+obtenerInstante:
+SELECT timestamp FROM sincronizacion WHERE id = 1;
+
+borrarInstante:
+DELETE FROM sincronizacion;

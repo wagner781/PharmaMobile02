@@ -50,6 +50,32 @@ fun ProductoScreen(
             }
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "🕒 ${uiState.antiguedadSincronizacion}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row {
+                TextButton(
+                    onClick = { viewModel.simularSincronizacionAntigua(2) },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                ) {
+                    Text("Simular >1 día", style = MaterialTheme.typography.labelSmall)
+                }
+                TextButton(
+                    onClick = { viewModel.limpiarBaseLocalParaPrueba() },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                ) {
+                    Text("Vaciar local", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
         if (uiState.avisoRed != null) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -184,7 +210,25 @@ private fun IndicadorCarga() {
 
 @Composable
 private fun EstadoVacio(mensaje: String) {
-    Text(mensaje)
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("📦", style = MaterialTheme.typography.headlineLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = mensaje,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @Composable
