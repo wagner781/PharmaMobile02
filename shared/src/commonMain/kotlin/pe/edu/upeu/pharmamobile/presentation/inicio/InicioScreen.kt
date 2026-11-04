@@ -1,6 +1,8 @@
 package pe.edu.upeu.pharmamobile.presentation.inicio
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -11,13 +13,13 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import pharmamobile.shared.generated.resources.Res
 import pharmamobile.shared.generated.resources.images
-import pharmamobile.shared.generated.resources.logo
 
 @Composable
-fun InicioScreen() {
+fun InicioScreen(contenidoAdicional: @Composable (() -> Unit)? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -37,5 +39,9 @@ fun InicioScreen() {
             text = "Gestión de inventario farmacéutico",
             style = MaterialTheme.typography.bodyLarge
         )
+        if (contenidoAdicional != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            contenidoAdicional()
+        }
     }
 }

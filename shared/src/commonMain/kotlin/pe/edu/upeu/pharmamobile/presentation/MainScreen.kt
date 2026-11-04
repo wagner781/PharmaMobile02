@@ -27,7 +27,8 @@ import pe.edu.upeu.pharmamobile.presentation.sesion.SesionViewModel
 fun MainScreen(
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    sesionViewModel: SesionViewModel = koinViewModel()
+    sesionViewModel: SesionViewModel = koinViewModel(),
+    contenidoInicio: @Composable (() -> Unit)? = null
 ) {
     val sesionState by sesionViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -201,7 +202,7 @@ fun MainScreen(
                     .padding(paddingValues)
             ) {
                 when (pantallaActual) {
-                    Screen.Inicio -> InicioScreen()
+                    Screen.Inicio -> InicioScreen(contenidoInicio)
                     Screen.Productos -> {
                         val viewModel: ProductoViewModel = koinViewModel()
                         ProductoScreen(
