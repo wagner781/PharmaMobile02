@@ -26,13 +26,21 @@ suspend fun <T> ejecutarLlamada(bloque: suspend () -> T): Result<T> =
     }
 
 private suspend fun traducirCliente(e: ClientRequestException): ErrorApi {
-    val cuerpo = runCatching {
+    val cuerpo = try {
         e.response.body<ErrorResponseDto>()
-    }.getOrNull()
+    } catch (cancelacion: CancellationException) {
+        throw cancelacion
+    } catch (_: Exception) {
+        null
+    }
     return when (e.response.status.value) {
-        400 -> ErrorApi.Validacion(cuerpo?.validationErrors.orEmpty())
+        400, 422 -> ErrorApi.Validacion(cuerpo?.validationErrors.orEmpty())
+        401 -> ErrorApi.NoAutorizado
+        403 -> ErrorApi.SinPrivilegio
         404 -> ErrorApi.NoEncontrado
+        408 -> ErrorApi.TiempoAgotado
         409 -> ErrorApi.Conflicto(cuerpo?.message ?: "Operación no permitida")
-        else -> ErrorApi.Servidor
+        429 -> ErrorApi.Servidor
+        else -> ErrorApi.SolicitudRechazada(cuerpo?.message ?: "Solicitud rechazada")
     }
 }

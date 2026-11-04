@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pe.edu.upeu.pharmamobil.db.PharmaDb
+import pe.edu.upeu.pharmamobil.db.Producto as FilaProducto
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 
 class ProductoLocal(base: PharmaDb) {
@@ -29,14 +30,32 @@ class ProductoLocal(base: PharmaDb) {
         consultas.listarPendientes().executeAsList()
             .map { it.aDominio() }
 
-    fun guardarPendiente(producto: Producto): Producto {
+    fun pendientesPorEnviar(maxIntentos: Long): List<FilaProducto> =
+        consultas.pendientesPorEnviar(maxIntentos).executeAsList()
+
+    fun sumarIntento(id: Long, motivo: String) {
+        consultas.sumarIntento(motivo, id)
+    }
+
+    fun marcarFallida(id: Long, maxIntentos: Long, motivo: String) {
+        consultas.marcarFallida(maxIntentos, motivo, id)
+    }
+
+    fun confirmarEnvio(idLocal: Long, producto: Producto) {
+        consultas.transaction {
+            consultas.insertar(producto.id, producto.nombre, producto.precio, producto.stock.toLong(), 0L)
+            consultas.borrarPorId(idLocal)
+        }
+    }
+
+    fun guardarPendiente(producto: Producto): Producto = consultas.transactionWithResult {
         val menor = consultas.siguienteIdLocal().executeAsOne()
         val local = producto.copy(id = minOf(menor, 0L) - 1L)
         consultas.insertar(
             local.id, local.nombre, local.precio,
             local.stock.toLong(), 1L
         )
-        return local
+        local
     }
 
     fun reemplazarSincronizados(productos: List<Producto>) {
@@ -61,7 +80,7 @@ class ProductoLocal(base: PharmaDb) {
     }
 }
 
-private fun pe.edu.upeu.pharmamobil.db.Producto.aDominio(): Producto = Producto(
+internal fun FilaProducto.aDominio(): Producto = Producto(
     id = id,
     nombre = nombre,
     precio = precio,

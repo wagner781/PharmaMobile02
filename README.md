@@ -140,7 +140,9 @@ CREATE TABLE producto (
     nombre TEXT NOT NULL,
     precio REAL NOT NULL,
     stock INTEGER NOT NULL,
-    pendiente INTEGER NOT NULL DEFAULT 0
+    pendiente INTEGER NOT NULL DEFAULT 0,
+    intentos INTEGER NOT NULL DEFAULT 0,
+    ultimoError TEXT
 );
 
 listarTodos:
@@ -150,7 +152,7 @@ listarPendientes:
 SELECT * FROM producto WHERE pendiente = 1;
 
 insertar:
-INSERT OR REPLACE INTO producto
+INSERT OR REPLACE INTO producto (id, nombre, precio, stock, pendiente)
 VALUES (?, ?, ?, ?, ?);
 
 borrarSincronizados:
@@ -171,16 +173,10 @@ DELETE FROM producto WHERE id = ?;
 - **Inyección con Koin:** Registrado en los módulos de plataforma (`platformModule`) y expuesta la instancia `PharmaDb` en el módulo común `dataModule`.
 
 ### 4. Regla Crítica de Sincronización: Subir y Luego Bajar
-En `ProductoRepositorioOffline`:
-```kotlin
-override suspend fun sincronizar() {
-    subirPendientes()
-    local.reemplazarSincronizados(remoto.listar())
-}
-```
-1. **Primero subir (`subirPendientes`):** Recorre los elementos con `pendiente = 1`, los envía a PharmaSoft (`remoto.registrar`) y los limpia de la cola local una vez aceptados por el backend.
-2. **Luego bajar (`reemplazarSincronizados`):** Descarga la lista actualizada desde el servidor y reemplaza dentro de una transacción atómica únicamente las filas sincronizadas (`borrarSincronizados()`), preservando cualquier trabajo offline en progreso.
-3. **Resiliencia de Red:** La operación se protege mediante `intentar { ... }` capturando `ErrorApi.SinConexion`, lo que garantiza que una pérdida de señal no interrumpa el funcionamiento local.
+
+1. **Primero subir.** El repositorio comprueba el acceso al catálogo con un GET de una fila antes de cada alta. Si esta comprobación falla por red, tiempo de espera o un error temporal del servicio, la fila guarda el motivo y suma un intento. Cada sincronización intenta la fila una vez, con esperas de 1, 2, 4 y 8 segundos para los reintentos. Al llegar a cinco intentos, la fila queda fallida.
+2. **Conservar los rechazos.** Validación, conflicto, sesión vencida y falta de permisos dejan la fila local fuera del envío automático con su último error. Cuando falla un POST y el servidor pudo haberlo procesado, la fila queda para revisión. PharmaSoft no ofrece una clave de idempotencia para confirmar que dos solicitudes corresponden a la misma alta.
+3. **Confirmar y luego bajar.** Un POST confirmado sustituye el ID temporal por el ID del servidor en una transacción local. Después de procesar las altas, la descarga actualiza las filas sincronizadas y conserva las pendientes y fallidas.
 
 ### 5. Verificación del Ciclo Offline Completo
 Validación en 6 puntos sobre el emulador Android y el servidor PharmaSoft:

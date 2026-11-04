@@ -26,6 +26,10 @@ class ProductoRepositorioOfflineTest {
     ) : ProductoApi(HttpClient()) {
         val llamadasRegistro = mutableListOf<Producto>()
 
+        override suspend fun comprobarEnvio() {
+            if (debeFallar || fallarSoloAlSubir) throw ErrorApi.SinConexion
+        }
+
         override suspend fun listar(): List<Producto> {
             if (debeFallar) throw ErrorApi.SinConexion
             return productosRemotos.toList()

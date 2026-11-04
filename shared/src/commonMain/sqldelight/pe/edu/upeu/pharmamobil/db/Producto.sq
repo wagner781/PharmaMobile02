@@ -29,6 +29,10 @@ sumarIntento:
 UPDATE producto SET intentos = intentos + 1, ultimoError = :ultimoError
 WHERE id = :id AND pendiente = 1;
 
+marcarFallida:
+UPDATE producto SET intentos = :maxIntentos, ultimoError = :ultimoError
+WHERE id = :id AND pendiente = 1;
+
 insertar:
 INSERT OR REPLACE INTO producto (id, nombre, precio, stock, pendiente)
 VALUES (?, ?, ?, ?, ?);

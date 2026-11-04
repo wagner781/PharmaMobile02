@@ -38,14 +38,13 @@ open class ProductoApi(private val client: HttpClient) {
         throw e
     }
 
-    open suspend fun registrar(producto: Producto, categoriaId: Long = 1L): Producto = try {
-        crear(producto.toRequest(categoriaId)).toDomain()
-    } catch (e: Exception) {
-        if (e is io.ktor.utils.io.errors.IOException || e is io.ktor.client.plugins.HttpRequestTimeoutException) {
-            throw ErrorApi.SinConexion
-        }
-        throw e
+    // Consulta de solo lectura para detectar fallos antes de intentar un alta.
+    open suspend fun comprobarEnvio() {
+        listar(pagina = 0, tamanio = 1)
     }
+
+    open suspend fun registrar(producto: Producto, categoriaId: Long = 1L): Producto =
+        crear(producto.toRequest(categoriaId)).toDomain()
 
     suspend fun obtener(id: Long): ProductoResponseDto =
         client.get("/api/v1/productos/$id").body()

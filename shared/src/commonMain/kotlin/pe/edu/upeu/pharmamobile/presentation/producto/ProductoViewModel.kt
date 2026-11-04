@@ -91,7 +91,11 @@ class ProductoViewModel(
                 it.copy(
                     sincronizando = false,
                     avisoRed = resultado.exceptionOrNull()?.let { fallo ->
-                        "Sin conexión: mostrando datos guardados"
+                        val error = (fallo as? ErrorApiException)?.error ?: fallo
+                        when (error) {
+                            ErrorApi.SinConexion -> "Sin conexión: mostrando datos guardados"
+                            else -> mensajeDe(error)
+                        }
                     }
                 )
             }
@@ -156,7 +160,7 @@ class ProductoViewModel(
                     _uiState.update {
                         it.copy(
                             operacion = ProductoUiState.Operacion.Inactiva,
-                            mensajeExito = "Producto registrado: ${producto.nombre}",
+                            mensajeExito = "Producto guardado: ${producto.nombre}",
                             formulario = ProductoUiState.FormularioProducto()
                         )
                     }
@@ -243,6 +247,9 @@ class ProductoViewModel(
     }
 
     private fun mensajeDe(error: Any): String = when (error) {
+        ErrorApi.NoAutorizado -> "Sesión vencida. Inicia sesión nuevamente"
+        ErrorApi.SinPrivilegio -> "No tienes permiso para realizar esta operación"
+        is ErrorApi.SolicitudRechazada -> error.motivo
         is ErrorApi.NoEncontrado -> "Producto no encontrado"
         is ErrorApi.Conflicto -> error.mensaje
         is ErrorApi.Servidor -> "Error interno del servidor"
