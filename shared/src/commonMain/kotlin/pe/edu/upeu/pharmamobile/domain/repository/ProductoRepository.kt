@@ -1,6 +1,9 @@
 package pe.edu.upeu.pharmamobile.domain.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import pe.edu.upeu.pharmamobile.domain.model.ActividadSincronizacion
+import pe.edu.upeu.pharmamobile.domain.model.EstadoEnvioProductos
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 
 interface ProductoRepository {
@@ -12,6 +15,10 @@ interface ProductoRepository {
 
     /** Sube lo pendiente y luego trae la lista del servidor. */
     suspend fun sincronizar()
+
+    fun observarEstadoEnvio(): Flow<EstadoEnvioProductos> = flowOf(EstadoEnvioProductos())
+    fun observarActividadSincronizacion(): Flow<ActividadSincronizacion> =
+        flowOf(ActividadSincronizacion.SinComprobar)
 
     fun obtenerUltimaSincronizacion(): Long? = null
     fun guardarUltimaSincronizacion(timestamp: Long) {}

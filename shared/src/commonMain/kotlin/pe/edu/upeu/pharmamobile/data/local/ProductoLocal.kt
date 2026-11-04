@@ -2,11 +2,15 @@ package pe.edu.upeu.pharmamobile.data.local
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import pe.edu.upeu.pharmamobil.db.PharmaDb
 import pe.edu.upeu.pharmamobil.db.Producto as FilaProducto
+import pe.edu.upeu.pharmamobile.domain.model.EnvioProductoFallido
+import pe.edu.upeu.pharmamobile.domain.model.EstadoEnvioProductos
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 
 class ProductoLocal(base: PharmaDb) {
@@ -29,6 +33,22 @@ class ProductoLocal(base: PharmaDb) {
     fun pendientes(): List<Producto> =
         consultas.listarPendientes().executeAsList()
             .map { it.aDominio() }
+
+    fun observarEstadoEnvio(maxIntentos: Long, idEnEnvio: Flow<Long?>): Flow<EstadoEnvioProductos> =
+        combine(
+            consultas.listarPendientes().asFlow().mapToList(Dispatchers.Default),
+            sincronizacion.obtenerInstante().asFlow().mapToOneOrNull(Dispatchers.Default),
+            idEnEnvio
+        ) { filas, ultimaSincronizacion, enEnvio ->
+            val fallidas = filas.filter { it.intentos >= maxIntentos && it.id != enEnvio }
+            EstadoEnvioProductos(
+                pendientes = filas.size - fallidas.size,
+                fallidas = fallidas.map {
+                    EnvioProductoFallido(it.id, it.nombre, it.ultimoError ?: "No se pudo enviar el producto")
+                },
+                ultimaSincronizacion = ultimaSincronizacion
+            )
+        }
 
     fun pendientesPorEnviar(maxIntentos: Long): List<FilaProducto> =
         consultas.pendientesPorEnviar(maxIntentos).executeAsList()

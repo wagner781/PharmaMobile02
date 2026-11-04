@@ -3,6 +3,8 @@ package pe.edu.upeu.pharmamobile.data.repository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import pe.edu.upeu.pharmamobile.data.local.ProductoLocal
@@ -11,6 +13,7 @@ import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
 import pe.edu.upeu.pharmamobile.data.remote.ejecutarLlamada
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
+import pe.edu.upeu.pharmamobile.domain.model.ActividadSincronizacion
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.platform.tiempoActualMillis
@@ -20,8 +23,12 @@ class ProductoRepositorioOffline(
     private val remoto: ProductoApi
 ) : ProductoRepository {
     private val mutex = Mutex()
+    private val idEnEnvio = MutableStateFlow<Long?>(null)
+    private val actividad = MutableStateFlow<ActividadSincronizacion>(ActividadSincronizacion.SinComprobar)
 
     override fun observar(): Flow<List<Producto>> = local.observar()
+    override fun observarEstadoEnvio() = local.observarEstadoEnvio(MAX_INTENTOS, idEnEnvio)
+    override fun observarActividadSincronizacion() = actividad.asStateFlow()
 
     override suspend fun registrar(producto: Producto): Producto {
         val guardado = mutex.withLock { local.guardarPendiente(producto) }
@@ -30,10 +37,21 @@ class ProductoRepositorioOffline(
     }
 
     override suspend fun sincronizar() = mutex.withLock {
-        subirPendientes()
-        val productos = ejecutarLlamada { remoto.listar() }.getOrThrow()
-        local.reemplazarSincronizados(productos)
-        local.guardarUltimaSincronizacion(tiempoActualMillis())
+        val anterior = actividad.value
+        actividad.value = ActividadSincronizacion.EnCurso
+        try {
+            subirPendientes()
+            val productos = ejecutarLlamada { remoto.listar() }.getOrThrow()
+            local.reemplazarSincronizados(productos)
+            local.guardarUltimaSincronizacion(tiempoActualMillis())
+            actividad.value = ActividadSincronizacion.Completada
+        } catch (cancelacion: CancellationException) {
+            actividad.value = anterior
+            throw cancelacion
+        } catch (fallo: Exception) {
+            actividad.value = ActividadSincronizacion.Fallida(fallo)
+            throw fallo
+        }
     }
 
     override fun obtenerUltimaSincronizacion(): Long? = local.obtenerUltimaSincronizacion()
@@ -69,21 +87,26 @@ class ProductoRepositorioOffline(
                 continue
             }
 
-            // Un cierre durante el POST también deja el alta pendiente de revisión.
-            local.marcarFallida(fila.id, MAX_INTENTOS, ENVIO_INCIERTO)
-            val producto = try {
-                ejecutarLlamada { remoto.registrar(fila.aDominio()) }.getOrThrow()
-            } catch (cancelacion: CancellationException) {
-                throw cancelacion
-            } catch (fallo: Exception) {
-                val error = errorApi(fallo)
-                if (error != null) {
-                    val motivo = motivoPermanente(error) ?: "${motivoTransitorio(error)}. $ENVIO_INCIERTO"
-                    local.marcarFallida(fila.id, MAX_INTENTOS, motivo)
+            idEnEnvio.value = fila.id
+            try {
+                // Un cierre durante el POST también deja el alta pendiente de revisión.
+                local.marcarFallida(fila.id, MAX_INTENTOS, ENVIO_INCIERTO)
+                val producto = try {
+                    ejecutarLlamada { remoto.registrar(fila.aDominio()) }.getOrThrow()
+                } catch (cancelacion: CancellationException) {
+                    throw cancelacion
+                } catch (fallo: Exception) {
+                    val error = errorApi(fallo)
+                    if (error != null) {
+                        val motivo = motivoPermanente(error) ?: "${motivoTransitorio(error)}. $ENVIO_INCIERTO"
+                        local.marcarFallida(fila.id, MAX_INTENTOS, motivo)
+                    }
+                    continue
                 }
-                continue
+                local.confirmarEnvio(fila.id, producto)
+            } finally {
+                idEnEnvio.value = null
             }
-            local.confirmarEnvio(fila.id, producto)
         }
     }
 

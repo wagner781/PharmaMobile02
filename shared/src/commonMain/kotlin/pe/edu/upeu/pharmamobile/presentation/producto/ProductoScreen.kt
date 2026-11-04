@@ -10,7 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import pe.edu.upeu.pharmamobile.domain.model.Producto
+import kotlinx.coroutines.delay
+import pe.edu.upeu.pharmamobile.domain.model.EnvioProductoFallido
+import pe.edu.upeu.pharmamobile.platform.formatearAntiguedad
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -26,6 +28,13 @@ fun ProductoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formulario = uiState.formulario
+    val sincronizacion = uiState.sincronizacion
+    val fallidas = sincronizacion.envios.fallidas
+    var mostrarFallos by remember { mutableStateOf(false) }
+
+    if (mostrarFallos) {
+        DetalleEnviosFallidos(fallidas, onCerrar = { mostrarFallos = false })
+    }
 
     Column(
         modifier = Modifier
@@ -40,9 +49,9 @@ fun ProductoScreen(
             Text("Catálogo de Productos", style = MaterialTheme.typography.headlineSmall)
             IconButton(
                 onClick = { viewModel.sincronizar() },
-                enabled = !uiState.sincronizando
+                enabled = !sincronizacion.enCurso
             ) {
-                if (uiState.sincronizando) {
+                if (sincronizacion.enCurso) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(Icons.Default.Refresh, contentDescription = "Sincronizar")
@@ -50,17 +59,13 @@ fun ProductoScreen(
             }
         }
 
+        ResumenSincronizacion(sincronizacion, onRevisar = { mostrarFallos = true })
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "🕒 ${uiState.antiguedadSincronizacion}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row {
                 TextButton(
                     onClick = { viewModel.simularSincronizacionAntigua(2) },
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
@@ -73,21 +78,6 @@ fun ProductoScreen(
                 ) {
                     Text("Vaciar local", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 }
-            }
-        }
-
-        if (uiState.avisoRed != null) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = uiState.avisoRed!!,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(8.dp),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
         }
 
         if (puedeRegistrar) {
@@ -189,6 +179,7 @@ fun ProductoScreen(
             ProductoUiState.Fase.SinProductos -> EstadoVacio("No hay productos registrados")
             is ProductoUiState.Fase.ConProductos -> ListaProductos(
                 productos = fase.productos,
+                idsFallidos = fallidas.map { it.id }.toSet(),
                 puedeRegistrar = puedeRegistrar,
                 onEdit = { viewModel.editarProducto(it) },
                 onDelete = { viewModel.eliminar(it.id) },
@@ -199,6 +190,67 @@ fun ProductoScreen(
             is ProductoUiState.Fase.Error -> EstadoError(fase.mensaje)
         }
     }
+}
+
+@Composable
+private fun ResumenSincronizacion(estado: SincronizacionUiState, onRevisar: () -> Unit) {
+    val ultima = estado.envios.ultimaSincronizacion
+    var antiguedad by remember(ultima) { mutableStateOf(formatearAntiguedad(ultima)) }
+    LaunchedEffect(ultima) {
+        if (ultima != null) {
+            while (true) {
+                delay(30_000)
+                antiguedad = formatearAntiguedad(ultima)
+            }
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Text(
+                text = estado.estadoConexion,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (estado.hayError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            )
+            Text(antiguedad, style = MaterialTheme.typography.bodySmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Pendientes: ${estado.envios.pendientes} · Fallidas: ${estado.envios.fallidas.size}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                if (estado.envios.fallidas.isNotEmpty()) {
+                    TextButton(onClick = onRevisar) { Text("Revisar fallos") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetalleEnviosFallidos(fallidas: List<EnvioProductoFallido>, onCerrar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        title = { Text("Envíos fallidos") },
+        text = {
+            if (fallidas.isEmpty()) {
+                Text("No hay envíos fallidos.")
+            } else {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(fallidas, key = { it.id }) { fallo ->
+                        Column {
+                            Text(fallo.nombre, style = MaterialTheme.typography.titleSmall)
+                            Text(fallo.motivo, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onCerrar) { Text("Cerrar") } }
+    )
 }
 
 @Composable
@@ -234,6 +286,7 @@ private fun EstadoVacio(mensaje: String) {
 @Composable
 private fun ListaProductos(
     productos: List<ProductoUi>,
+    idsFallidos: Set<Long>,
     puedeRegistrar: Boolean = true,
     onEdit: (ProductoUi) -> Unit,
     onDelete: (ProductoUi) -> Unit,
@@ -268,15 +321,16 @@ private fun ListaProductos(
                             Text("⚠️ Requiere reposición", color = Color(0xFFFFA500))
                         }
                         if (producto.id < 0) {
+                            val fallido = producto.id in idsFallidos
                             Surface(
                                 shape = MaterialTheme.shapes.extraSmall,
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                color = if (fallido) MaterialTheme.colorScheme.errorContainer
+                                    else MaterialTheme.colorScheme.tertiaryContainer,
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Text(
-                                    text = "⏳ Pendiente de envío (ID: ${producto.id})",
+                                    text = if (fallido) "Envío fallido" else "Pendiente de envío (ID: ${producto.id})",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
                             }

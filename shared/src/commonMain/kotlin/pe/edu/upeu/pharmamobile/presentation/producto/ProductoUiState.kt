@@ -1,16 +1,15 @@
 package pe.edu.upeu.pharmamobile.presentation.producto
 
 import pe.edu.upeu.pharmamobile.domain.model.Producto
+import pe.edu.upeu.pharmamobile.domain.model.EstadoEnvioProductos
 
 data class ProductoUiState(
     val productos: List<Producto> = emptyList(),
     val fase: Fase = Fase.Cargando,
     val formulario: FormularioProducto = FormularioProducto(),
     val operacion: Operacion = Operacion.Inactiva,
-    val sincronizando: Boolean = false,
-    val avisoRed: String? = null,
     val mensajeExito: String? = null,
-    val antiguedadSincronizacion: String = "Nunca sincronizado"
+    val sincronizacion: SincronizacionUiState = SincronizacionUiState()
 ) {
     sealed interface Fase {
         data object Cargando : Fase
@@ -36,3 +35,10 @@ data class ProductoUiState(
         val stockError: String? = null
     )
 }
+
+data class SincronizacionUiState(
+    val envios: EstadoEnvioProductos = EstadoEnvioProductos(),
+    val enCurso: Boolean = false,
+    val estadoConexion: String = "Conexión sin comprobar",
+    val hayError: Boolean = false
+)

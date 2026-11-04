@@ -3,6 +3,7 @@ package pe.edu.upeu.pharmamobile.presentation.producto
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +15,7 @@ import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
+import pe.edu.upeu.pharmamobile.domain.model.ActividadSincronizacion
 import pe.edu.upeu.pharmamobile.domain.usecase.comoTextoParaCompartir
 
 class ProductoViewModel(
@@ -45,7 +47,31 @@ class ProductoViewModel(
     val uiState: StateFlow<ProductoUiState> = _uiState.asStateFlow()
 
     init {
-        refrescarAntiguedad()
+        viewModelScope.launch {
+            repositorio.observarEstadoEnvio().collect { envios ->
+                _uiState.update { it.copy(sincronizacion = it.sincronizacion.copy(envios = envios)) }
+            }
+        }
+        viewModelScope.launch {
+            repositorio.observarActividadSincronizacion().collect { actividad ->
+                _uiState.update { estado ->
+                    val sincronizacion = estado.sincronizacion
+                    estado.copy(sincronizacion = when (actividad) {
+                        ActividadSincronizacion.SinComprobar ->
+                            sincronizacion.copy(enCurso = false, estadoConexion = "Conexión sin comprobar", hayError = false)
+                        ActividadSincronizacion.EnCurso ->
+                            sincronizacion.copy(enCurso = true, estadoConexion = "Sincronizando…", hayError = false)
+                        ActividadSincronizacion.Completada ->
+                            sincronizacion.copy(enCurso = false, estadoConexion = "PharmaSoft respondió", hayError = false)
+                        is ActividadSincronizacion.Fallida -> {
+                            val error = (actividad.causa as? ErrorApiException)?.error ?: actividad.causa
+                            val mensaje = if (error == ErrorApi.SinConexion) "Sin conexión" else mensajeDe(error)
+                            sincronizacion.copy(enCurso = false, estadoConexion = mensaje, hayError = true)
+                        }
+                    })
+                }
+            }
+        }
         viewModelScope.launch {
             repositorio.observar().collect { productos ->
                 _uiState.update {
@@ -59,50 +85,30 @@ class ProductoViewModel(
         sincronizar()
     }
 
-    fun refrescarAntiguedad() {
-        viewModelScope.launch {
-            val timestamp = runCatching { repositorio.obtenerUltimaSincronizacion() }.getOrNull()
-            val texto = pe.edu.upeu.pharmamobile.platform.formatearAntiguedad(timestamp)
-            _uiState.update { it.copy(antiguedadSincronizacion = texto) }
-        }
-    }
-
     fun simularSincronizacionAntigua(diasAtras: Long = 2) {
         viewModelScope.launch {
             val millisAtras = pe.edu.upeu.pharmamobile.platform.tiempoActualMillis() - (diasAtras * 24 * 60 * 60 * 1000L)
             runCatching { repositorio.guardarUltimaSincronizacion(millisAtras) }
-            refrescarAntiguedad()
         }
     }
 
     fun limpiarBaseLocalParaPrueba() {
         viewModelScope.launch {
             runCatching { repositorio.limpiarTodoLocal() }
-            refrescarAntiguedad()
         }
     }
 
     fun sincronizar() {
         viewModelScope.launch {
-            _uiState.update { it.copy(sincronizando = true) }
-            val resultado = resultadoDe { repositorio.sincronizar() }
-            refrescarAntiguedad()
-            _uiState.update {
-                it.copy(
-                    sincronizando = false,
-                    avisoRed = resultado.exceptionOrNull()?.let { fallo ->
-                        val error = (fallo as? ErrorApiException)?.error ?: fallo
-                        when (error) {
-                            ErrorApi.SinConexion -> "Sin conexión: mostrando datos guardados"
-                            else -> mensajeDe(error)
-                        }
-                    }
-                )
+            try {
+                repositorio.sincronizar()
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (_: Exception) {
+                // El repositorio publica el resultado para la pantalla.
             }
         }
     }
-
-    private suspend fun <T> resultadoDe(bloque: suspend () -> T): Result<T> = runCatching { bloque() }
 
     private fun faseDe(productos: List<pe.edu.upeu.pharmamobile.domain.model.Producto>): ProductoUiState.Fase =
         if (productos.isEmpty()) ProductoUiState.Fase.SinProductos
