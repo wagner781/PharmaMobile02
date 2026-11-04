@@ -6,11 +6,13 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 import org.koin.android.ext.koin.androidContext
+import pe.edu.upeu.pharmamobile.data.firebase.TelemetriaFirebase
 import pe.edu.upeu.pharmamobile.data.local.AlmacenSeguro
 import pe.edu.upeu.pharmamobile.data.local.AlmacenSeguroAndroid
 import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriver
 import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriverAndroid
 import pe.edu.upeu.pharmamobile.domain.platform.Compartidor
+import pe.edu.upeu.pharmamobile.domain.port.Telemetria
 import pe.edu.upeu.pharmamobile.platform.CompartidorAndroid
 
 actual val platformModule: Module = module {
@@ -18,4 +20,5 @@ actual val platformModule: Module = module {
     single<Compartidor> { CompartidorAndroid(androidContext()) }
     single<AlmacenSeguro> { AlmacenSeguroAndroid(androidContext()) }
     single<CreadorDeDriver> { CreadorDeDriverAndroid(androidContext()) }
+    single<Telemetria> { TelemetriaFirebase(androidContext()) }
 }

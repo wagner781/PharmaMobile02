@@ -81,6 +81,7 @@ kotlin {
             implementation("io.ktor:ktor-client-android:$ktor")
             implementation("androidx.security:security-crypto:1.1.0-alpha06")
             implementation(libs.sqldelight.android)
+            implementation(libs.firebase.crashlytics)
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:$ktor")

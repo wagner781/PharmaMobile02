@@ -16,8 +16,12 @@ kotlin = "2.4.10"
 material3 = "1.11.0-alpha07"
 coroutines = "1.10.2"
 sqldelight = "2.1.0"
+firebaseGitLive = "2.7.0"
+googleServices = "4.5.0"
+crashlyticsGradle = "3.0.8"
 
 [libraries]
+firebase-crashlytics = { module = "dev.gitlive:firebase-crashlytics", version.ref = "firebaseGitLive" }
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
@@ -46,6 +50,8 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 
 [plugins]
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebaseCrashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsGradle" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

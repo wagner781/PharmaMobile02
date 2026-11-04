@@ -10,6 +10,8 @@ import pe.edu.upeu.pharmamobile.data.local.AlmacenSeguroIos
 import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriver
 import pe.edu.upeu.pharmamobile.data.local.CreadorDeDriverIos
 import pe.edu.upeu.pharmamobile.domain.platform.Compartidor
+import pe.edu.upeu.pharmamobile.domain.port.Telemetria
+import pe.edu.upeu.pharmamobile.domain.port.TelemetriaDesactivada
 import pe.edu.upeu.pharmamobile.platform.CompartidorIos
 
 actual val platformModule: Module = module {
@@ -17,4 +19,5 @@ actual val platformModule: Module = module {
     single<Compartidor> { CompartidorIos() }
     single<AlmacenSeguro> { AlmacenSeguroIos() }
     single<CreadorDeDriver> { CreadorDeDriverIos() }
+    single<Telemetria> { TelemetriaDesactivada }
 }

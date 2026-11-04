@@ -15,12 +15,18 @@ import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 import pe.edu.upeu.pharmamobile.domain.model.ActividadSincronizacion
 import pe.edu.upeu.pharmamobile.domain.model.Producto
+import pe.edu.upeu.pharmamobile.domain.port.EventoTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.FalloTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.OperacionTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.Telemetria
+import pe.edu.upeu.pharmamobile.domain.port.TelemetriaDesactivada
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.platform.tiempoActualMillis
 
 class ProductoRepositorioOffline(
     private val local: ProductoLocal,
-    private val remoto: ProductoApi
+    private val remoto: ProductoApi,
+    private val telemetria: Telemetria = TelemetriaDesactivada
 ) : ProductoRepository {
     private val mutex = Mutex()
     private val idEnEnvio = MutableStateFlow<Long?>(null)
@@ -45,11 +51,13 @@ class ProductoRepositorioOffline(
             local.reemplazarSincronizados(productos)
             local.guardarUltimaSincronizacion(tiempoActualMillis())
             actividad.value = ActividadSincronizacion.Completada
+            telemetria.registrarEvento(EventoTelemetria.SINCRONIZACION_PRODUCTOS_COMPLETADA)
         } catch (cancelacion: CancellationException) {
             actividad.value = anterior
             throw cancelacion
         } catch (fallo: Exception) {
             actividad.value = ActividadSincronizacion.Fallida(fallo)
+            registrarFalloTecnico(fallo)
             throw fallo
         }
     }
@@ -119,6 +127,16 @@ class ProductoRepositorioOffline(
 
     private fun errorApi(fallo: Exception): ErrorApi? =
         (fallo as? ErrorApiException)?.error ?: fallo as? ErrorApi
+
+    private fun registrarFalloTecnico(fallo: Exception) {
+        val categoria = when (errorApi(fallo)) {
+            ErrorApi.Servidor -> FalloTelemetria.SERVIDOR
+            ErrorApi.TiempoAgotado -> FalloTelemetria.TIEMPO_AGOTADO
+            null -> FalloTelemetria.INESPERADO
+            else -> return
+        }
+        telemetria.registrarError(OperacionTelemetria.SINCRONIZAR_PRODUCTOS, categoria)
+    }
 
     private fun motivoPermanente(error: ErrorApi): String? = when (error) {
         is ErrorApi.Validacion -> error.porCampo.values.joinToString(". ")

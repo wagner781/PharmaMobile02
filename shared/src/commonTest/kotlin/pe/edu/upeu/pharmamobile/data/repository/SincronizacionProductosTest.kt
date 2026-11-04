@@ -21,6 +21,11 @@ import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 import pe.edu.upeu.pharmamobile.domain.model.Producto
+import pe.edu.upeu.pharmamobile.domain.port.EventoTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.FalloTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.OperacionTelemetria
+import pe.edu.upeu.pharmamobile.domain.port.Telemetria
+import pe.edu.upeu.pharmamobile.domain.port.TelemetriaDesactivada
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -141,8 +146,39 @@ class SincronizacionProductosTest {
         }
     }
 
+    @Test
+    fun sincronizacionRegistraCategoriasTecnicasYOmiteRechazosEsperados() = runTest {
+        val errores = mutableListOf<Pair<OperacionTelemetria, FalloTelemetria>>()
+        val eventos = mutableListOf<EventoTelemetria>()
+        val telemetria = object : Telemetria {
+            override fun registrarError(operacion: OperacionTelemetria, fallo: FalloTelemetria) {
+                errores.add(operacion to fallo)
+            }
+
+            override fun registrarEvento(evento: EventoTelemetria) {
+                eventos.add(evento)
+            }
+        }
+        var estado = HttpStatusCode.Unauthorized
+        val motor = MockEngine { respond(PAGINA_VACIA, estado, JSON) }
+
+        conRepositorio(motor, telemetria) { _, _, repo ->
+            assertFailsWith<ErrorApiException> { repo.sincronizar() }
+            assertTrue(errores.isEmpty())
+
+            estado = HttpStatusCode.ServiceUnavailable
+            assertFailsWith<ErrorApiException> { repo.sincronizar() }
+            assertEquals(listOf(OperacionTelemetria.SINCRONIZAR_PRODUCTOS to FalloTelemetria.SERVIDOR), errores)
+
+            estado = HttpStatusCode.OK
+            repo.sincronizar()
+            assertEquals(listOf(EventoTelemetria.SINCRONIZACION_PRODUCTOS_COMPLETADA), eventos)
+        }
+    }
+
     private suspend fun conRepositorio(
         motor: MockEngine,
+        telemetria: Telemetria = TelemetriaDesactivada,
         prueba: suspend (PharmaDb, ProductoLocal, ProductoRepositorioOffline) -> Unit
     ) {
         val driver = testDriver()
@@ -154,7 +190,7 @@ class SincronizacionProductosTest {
         try {
             val base = PharmaDb(driver)
             val local = ProductoLocal(base)
-            prueba(base, local, ProductoRepositorioOffline(local, ProductoApi(cliente)))
+            prueba(base, local, ProductoRepositorioOffline(local, ProductoApi(cliente), telemetria))
         } finally {
             cliente.close()
             driver.close()

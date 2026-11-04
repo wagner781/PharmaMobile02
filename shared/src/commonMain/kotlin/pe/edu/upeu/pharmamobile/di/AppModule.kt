@@ -37,7 +37,7 @@ val dataModule = module {
     single { crearHttpClient(get(), get()) }
     single { ProductoApi(get()) }
     single<ProductoRepository> {
-        ProductoRepositorioOffline(get(), get())
+        ProductoRepositorioOffline(get(), get(), get())
     }
     single<AuthRepository> {
         AuthRepositorioRest(get(), get())

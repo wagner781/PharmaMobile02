@@ -32,7 +32,10 @@ open class ProductoApi(private val client: HttpClient) {
     open suspend fun listar(): List<Producto> = try {
         listar(pagina = 0, tamanio = 100).contenido.map { it.toDomain() }.filter { it.estado }
     } catch (e: Exception) {
-        if (e is io.ktor.utils.io.errors.IOException || e is io.ktor.client.plugins.HttpRequestTimeoutException) {
+        if (e is io.ktor.client.plugins.HttpRequestTimeoutException) {
+            throw ErrorApi.TiempoAgotado
+        }
+        if (e is io.ktor.utils.io.errors.IOException) {
             throw ErrorApi.SinConexion
         }
         throw e
