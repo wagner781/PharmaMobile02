@@ -1,6 +1,7 @@
 package pe.edu.upeu.pharmamobile.data.repository
 
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import pe.edu.upeu.pharmamobil.db.PharmaDb
@@ -23,7 +24,7 @@ class ProductoRepositorioOfflineTest {
         val productosRemotos: MutableList<Producto> = mutableListOf(),
         var debeFallar: Boolean = false,
         var fallarSoloAlSubir: Boolean = false
-    ) : ProductoApi(HttpClient()) {
+    ) : ProductoApi(HttpClient(MockEngine { error("La prueba debe usar el API falso") })) {
         val llamadasRegistro = mutableListOf<Producto>()
 
         override suspend fun comprobarEnvio() {

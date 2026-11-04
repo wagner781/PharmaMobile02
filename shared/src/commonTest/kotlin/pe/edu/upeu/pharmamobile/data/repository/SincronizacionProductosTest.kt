@@ -13,6 +13,9 @@ import io.ktor.http.contentType
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import pe.edu.upeu.pharmamobil.db.PharmaDb
@@ -20,6 +23,7 @@ import pe.edu.upeu.pharmamobile.data.local.ProductoLocal
 import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
+import pe.edu.upeu.pharmamobile.domain.model.EstadoEnvioProductos
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import pe.edu.upeu.pharmamobile.domain.port.EventoTelemetria
 import pe.edu.upeu.pharmamobile.domain.port.FalloTelemetria
@@ -173,6 +177,69 @@ class SincronizacionProductosTest {
             estado = HttpStatusCode.OK
             repo.sincronizar()
             assertEquals(listOf(EventoTelemetria.SINCRONIZACION_PRODUCTOS_COMPLETADA), eventos)
+        }
+    }
+
+    @Test
+    fun laColaObservableNotificaElPendienteElFalloYLaUltimaDescarga() = runTest {
+        val motor = MockEngine { solicitud ->
+            if (solicitud.method == HttpMethod.Post) {
+                respond("""{"message":"Nombre duplicado"}""", HttpStatusCode.Conflict, JSON)
+            } else {
+                respond(PAGINA_VACIA, headers = JSON)
+            }
+        }
+        conRepositorio(motor) { _, local, repo ->
+            val estados = Channel<EstadoEnvioProductos>(Channel.UNLIMITED)
+            val observacion = launch { repo.observarEstadoEnvio().collect { estados.send(it) } }
+            try {
+                assertEquals(EstadoEnvioProductos(), estados.receive())
+                val producto = local.guardarPendiente(Producto(0, "Pendiente", 2.5, 7))
+                val pendiente = estados.receive()
+                assertEquals(1, pendiente.pendientes)
+                assertTrue(pendiente.fallidas.isEmpty())
+
+                repo.sincronizar()
+
+                var resumen = estados.receive()
+                while (resumen.ultimaSincronizacion == null || resumen.fallidas.isEmpty()) {
+                    resumen = estados.receive()
+                }
+                assertEquals(0, resumen.pendientes)
+                val fallida = resumen.fallidas.single()
+                assertEquals(producto.id, fallida.id)
+                assertEquals("Nombre duplicado", fallida.motivo)
+            } finally {
+                observacion.cancelAndJoin()
+            }
+        }
+    }
+
+    @Test
+    fun unAltaConfirmadaSobreviveAlFalloDeDescargaSinReenviarse() = runTest {
+        var altas = 0
+        val motor = MockEngine { solicitud ->
+            when {
+                solicitud.method == HttpMethod.Post -> {
+                    altas++
+                    respond(PRODUCTO_REMOTO, HttpStatusCode.Created, JSON)
+                }
+                solicitud.url.parameters["tamanio"] == "1" -> respond(PAGINA_VACIA, headers = JSON)
+                else -> respond("", HttpStatusCode.ServiceUnavailable)
+            }
+        }
+        conRepositorio(motor) { base, local, repo ->
+            local.guardarPendiente(Producto(0, "Confirmado", 2.5, 7))
+
+            repeat(2) {
+                val fallo = assertFailsWith<ErrorApiException> { repo.sincronizar() }
+                assertEquals(ErrorApi.Servidor, fallo.error)
+            }
+
+            assertEquals(1, altas)
+            assertEquals(42L, base.productoQueries.listarTodos().executeAsOne().id)
+            assertTrue(local.pendientes().isEmpty())
+            assertEquals(null, repo.obtenerUltimaSincronizacion())
         }
     }
 

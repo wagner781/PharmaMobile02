@@ -23,6 +23,26 @@ import pe.edu.upeu.pharmamobile.domain.permiso.EstadoPermiso
 import pe.edu.upeu.pharmamobile.domain.permiso.GestorPermisos
 import pe.edu.upeu.pharmamobile.domain.permiso.Permiso
 
+internal suspend fun actuarSobreNotificaciones(
+    gestor: GestorPermisos,
+    estadoMostrado: EstadoPermiso,
+    enviarPrueba: () -> Unit
+): EstadoPermiso {
+    val actual = gestor.estado(Permiso.NOTIFICACIONES)
+    if (actual != estadoMostrado) return actual
+    return when (actual) {
+        EstadoPermiso.Denegado -> gestor.solicitar(Permiso.NOTIFICACIONES)
+        EstadoPermiso.DenegadoParaSiempre -> {
+            gestor.abrirAjustes()
+            actual
+        }
+        EstadoPermiso.Concedido -> {
+            enviarPrueba()
+            actual
+        }
+    }
+}
+
 @Composable
 fun PermisoNotificaciones(gestor: GestorPermisos, enviarPrueba: () -> Unit) {
     val scope = rememberCoroutineScope()
@@ -39,32 +59,39 @@ fun PermisoNotificaciones(gestor: GestorPermisos, enviarPrueba: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text("Notificaciones", style = MaterialTheme.typography.titleMedium)
-            when (estado) {
-                null -> Text("Comprobando permiso…")
+            val estadoMostrado = estado
+            val accion = when (estadoMostrado) {
+                null -> {
+                    Text("Comprobando permiso…")
+                    null
+                }
                 EstadoPermiso.Concedido -> {
                     Text("Permiso concedido.")
-                    Button(onClick = enviarPrueba) { Text("Enviar notificación de prueba") }
+                    "Enviar notificación de prueba"
                 }
                 EstadoPermiso.Denegado -> {
                     Text("Permiso denegado. Actívalo si quieres recibir avisos de PharmaMobile en este dispositivo.")
-                    Button(
-                        enabled = !solicitando,
-                        onClick = {
-                            solicitando = true
-                            scope.launch {
-                                try {
-                                    estado = gestor.solicitar(Permiso.NOTIFICACIONES)
-                                } finally {
-                                    solicitando = false
-                                }
-                            }
-                        }
-                    ) { Text("Permitir notificaciones") }
+                    "Permitir notificaciones"
                 }
                 EstadoPermiso.DenegadoParaSiempre -> {
                     Text("Permiso denegado permanentemente. Puedes activar las notificaciones en Ajustes.")
-                    Button(onClick = gestor::abrirAjustes) { Text("Abrir Ajustes") }
+                    "Abrir Ajustes"
                 }
+            }
+            if (accion != null && estadoMostrado != null) {
+                Button(
+                    enabled = !solicitando,
+                    onClick = {
+                        solicitando = true
+                        scope.launch {
+                            try {
+                                estado = actuarSobreNotificaciones(gestor, estadoMostrado, enviarPrueba)
+                            } finally {
+                                solicitando = false
+                            }
+                        }
+                    }
+                ) { Text(accion) }
             }
         }
     }
