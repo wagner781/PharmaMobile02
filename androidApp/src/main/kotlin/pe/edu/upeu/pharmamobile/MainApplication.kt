@@ -15,6 +15,9 @@ class MainApplication : Application() {
         initKoin {
             androidLogger()
             androidContext(this@MainApplication)
+            if (BuildConfig.PHARMASOFT_BASE_URL.isNotEmpty()) {
+                properties(mapOf("pharmaSoftBaseUrl" to BuildConfig.PHARMASOFT_BASE_URL))
+            }
             modules(module {
                 factory<GestorPermisos> { (actividad: ComponentActivity) -> GestorPermisosAndroid(actividad) }
             })

@@ -6,6 +6,7 @@ import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 import org.koin.core.module.dsl.viewModelOf
 import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
+import pe.edu.upeu.pharmamobile.data.remote.URL_BASE
 import pe.edu.upeu.pharmamobile.data.remote.crearHttpClient
 import pe.edu.upeu.pharmamobile.domain.repository.ProductoRepository
 import pe.edu.upeu.pharmamobile.data.repository.ProductoRepositorioRest
@@ -34,7 +35,7 @@ expect val platformModule: Module
 val dataModule = module {
     single { PharmaDb(get<CreadorDeDriver>().crear()) }
     single { ProductoLocal(get()) }
-    single { crearHttpClient(get(), get()) }
+    single { crearHttpClient(get(), get(), urlBase = getProperty("pharmaSoftBaseUrl", URL_BASE)) }
     single { ProductoApi(get()) }
     single<ProductoRepository> {
         ProductoRepositorioOffline(get(), get(), get())

@@ -1,3 +1,4 @@
+import java.net.URI
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -13,6 +14,15 @@ if (file("google-services.json").isFile) {
 
 // La firma de entrega se carga fuera de la caché de configuración de Gradle.
 val cacheDeConfiguracionActiva = gradle.startParameter.isConfigurationCacheRequested
+val pharmaSoftBaseUrl = providers.gradleProperty("pharmaSoftBaseUrl").orNull
+if (pharmaSoftBaseUrl != null) {
+    val uri = URI.create(pharmaSoftBaseUrl)
+    require(uri.scheme in setOf("http", "https") && uri.host != null &&
+        uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+        uri.rawPath in setOf("", "/")) {
+        "pharmaSoftBaseUrl debe ser un origen HTTP o HTTPS, sin credenciales ni ruta."
+    }
+}
 val archivoFirma = rootProject.file("keystore.properties")
 val propiedadesFirma = Properties()
 if (!cacheDeConfiguracionActiva && archivoFirma.isFile) {
@@ -67,6 +77,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
+        buildConfigField("String", "PHARMASOFT_BASE_URL", "\"${pharmaSoftBaseUrl.orEmpty()}\"")
     }
     signingConfigs {
         if (errorFirma == null) {
@@ -98,6 +109,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }

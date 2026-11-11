@@ -23,7 +23,8 @@ const val URL_BASE = "http://10.0.2.2:8080"
 fun crearHttpClient(
     motor: HttpClientEngine,
     almacen: AlmacenSeguro,
-    esDepuracion: Boolean = true
+    esDepuracion: Boolean = true,
+    urlBase: String = URL_BASE
 ): HttpClient =
     HttpClient(motor) {
         expectSuccess = true
@@ -42,7 +43,7 @@ fun crearHttpClient(
         }
 
         defaultRequest {
-            url(URL_BASE)
+            url(urlBase)
             contentType(ContentType.Application.Json)
         }
 
