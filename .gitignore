@@ -5,6 +5,9 @@
 xcuserdata
 !src/**/build/
 local.properties
+keystore.properties
+*.jks
+*.keystore
 /androidApp/google-services.json
 .idea
 .DS_Store

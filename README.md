@@ -193,3 +193,27 @@ Implementadas en `ProductoRepositorioOfflineTest.kt` con base en memoria (`JdbcS
 2. `con red se sincroniza y actualiza la lista local`: Valida la descarga e inserción de datos remotos en la base local.
 3. `sincronizar sube pendientes antes de bajar del servidor`: Valida el flujo completo de subida previa y posterior recepción de identificadores reales.
 - **Resultado:** 100% de pruebas aprobadas (`BUILD SUCCESSFUL`).
+
+## Firma de entrega para Android
+
+La versión de entrega usa `applicationId` `pe.edu.upeu.pharmamobile`,
+`versionCode` `1` y `versionName` `1.0.0`. La variante `release` tiene
+minificación con R8. Guarda el JKS fuera del repositorio y crea
+`keystore.properties` en la raíz del proyecto con estos campos:
+
+```properties
+storeFile=C:/ruta/local/pharmamobile-release.jks
+storePassword=REEMPLAZAR_LOCALMENTE
+keyAlias=pharmamobile-release
+keyPassword=REEMPLAZAR_LOCALMENTE
+```
+
+Usa barras `/` para la ruta del almacén en Windows. El archivo contiene
+contraseñas y Git lo ignora junto a los archivos `.jks` y `.keystore`.
+El build de depuración funciona sin ese archivo. Para firmar `release`
+desactiva la caché de configuración en esa ejecución, de modo que Gradle
+cargue las credenciales sin guardar esa configuración en caché:
+
+```powershell
+.\gradlew.bat --no-configuration-cache :androidApp:bundleRelease :androidApp:assembleRelease
+```

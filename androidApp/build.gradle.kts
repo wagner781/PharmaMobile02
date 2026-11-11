@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,6 +9,37 @@ plugins {
 if (file("google-services.json").isFile) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
+}
+
+// La firma de entrega se carga fuera de la caché de configuración de Gradle.
+val cacheDeConfiguracionActiva = gradle.startParameter.isConfigurationCacheRequested
+val archivoFirma = rootProject.file("keystore.properties")
+val propiedadesFirma = Properties()
+if (!cacheDeConfiguracionActiva && archivoFirma.isFile) {
+    archivoFirma.inputStream().use { propiedadesFirma.load(it) }
+}
+val camposFirma = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val almacenFirma = propiedadesFirma.getProperty("storeFile")?.takeIf { it.isNotBlank() }
+    ?.let { rootProject.file(it) }
+val errorFirma = when {
+    cacheDeConfiguracionActiva -> "Ejecuta el build release con --no-configuration-cache."
+    !archivoFirma.isFile -> "Falta keystore.properties en la raíz del proyecto."
+    camposFirma.any { propiedadesFirma.getProperty(it).isNullOrBlank() } -> "Completa los cuatro campos de keystore.properties."
+    almacenFirma?.isFile != true -> "El almacén indicado en keystore.properties no existe."
+    else -> null
+}
+
+val verificarConfiguracionFirmaRelease by tasks.registering {
+    val mensaje = errorFirma
+    doLast {
+        mensaje?.let { throw GradleException(it) }
+    }
+}
+
+tasks.configureEach {
+    if (name in setOf("preReleaseBuild", "packageRelease", "signReleaseBundle", "assembleRelease", "bundleRelease")) {
+        dependsOn(verificarConfiguracionFirmaRelease)
+    }
 }
 
 kotlin {
@@ -34,7 +66,17 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
+    }
+    signingConfigs {
+        if (errorFirma == null) {
+            create("release") {
+                storeFile = almacenFirma
+                storePassword = propiedadesFirma.getProperty("storePassword")
+                keyAlias = propiedadesFirma.getProperty("keyAlias")
+                keyPassword = propiedadesFirma.getProperty("keyPassword")
+            }
+        }
     }
     packaging {
         resources {
@@ -43,7 +85,8 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
