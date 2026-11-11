@@ -16,6 +16,7 @@ import pe.edu.upeu.pharmamobile.data.mapper.toDomain
 import pe.edu.upeu.pharmamobile.data.mapper.toRequest
 import pe.edu.upeu.pharmamobile.domain.model.Producto
 import pe.edu.upeu.pharmamobile.domain.error.ErrorApi
+import pe.edu.upeu.pharmamobile.domain.error.ErrorApiException
 
 open class ProductoApi(private val client: HttpClient) {
     suspend fun obtenerProductos(limite: Int = 10): List<ProductoDto> =
@@ -57,6 +58,15 @@ open class ProductoApi(private val client: HttpClient) {
 
     suspend fun actualizar(id: Long, request: ProductoRequestDto): ProductoResponseDto =
         client.put("/api/v1/productos/$id") { setBody(request) }.body()
+
+    suspend fun actualizar(producto: Producto): Producto {
+        val actual = obtener(producto.id)
+        val categoriaId = actual.categoriaId ?: throw ErrorApiException(
+            ErrorApi.SolicitudRechazada("El producto no tiene una categoría asignada")
+        )
+        val solicitud = producto.toRequest(categoriaId).copy(estado = actual.estado)
+        return actualizar(producto.id, solicitud).toDomain()
+    }
 
     suspend fun eliminar(id: Long) {
         client.delete("/api/v1/productos/$id")

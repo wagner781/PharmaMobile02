@@ -11,6 +11,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.headersOf
+import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancelAndJoin
@@ -18,6 +19,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import pe.edu.upeu.pharmamobil.db.PharmaDb
 import pe.edu.upeu.pharmamobile.data.local.ProductoLocal
 import pe.edu.upeu.pharmamobile.data.remote.ProductoApi
@@ -30,6 +36,8 @@ import pe.edu.upeu.pharmamobile.domain.port.FalloTelemetria
 import pe.edu.upeu.pharmamobile.domain.port.OperacionTelemetria
 import pe.edu.upeu.pharmamobile.domain.port.Telemetria
 import pe.edu.upeu.pharmamobile.domain.port.TelemetriaDesactivada
+import pe.edu.upeu.pharmamobile.domain.usecase.ActualizarProductoUseCase
+import pe.edu.upeu.pharmamobile.domain.usecase.EliminarProductoUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -243,6 +251,61 @@ class SincronizacionProductosTest {
         }
     }
 
+    @Test
+    fun editarMantieneLaCategoriaYActualizaLaCopiaTrasConfirmacion() = runTest {
+        val motor = MockEngine { solicitud ->
+            assertEquals("/api/v1/productos/42", solicitud.url.encodedPath)
+            when (solicitud.method) {
+                HttpMethod.Get -> respond(
+                    """{"id":42,"nombre":"Original","precio":2.5,"stock":7,"categoriaId":9,"estado":true}""",
+                    headers = JSON
+                )
+                HttpMethod.Put -> {
+                    val cuerpo = (solicitud.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+                    val datos = Json.parseToJsonElement(cuerpo).jsonObject
+                    assertEquals(9L, datos.getValue("categoriaId").jsonPrimitive.long)
+                    assertTrue(datos.getValue("estado").jsonPrimitive.boolean)
+                    respond(
+                        """{"id":42,"nombre":"Editado","precio":3.5,"stock":8,"categoriaId":9}""",
+                        headers = JSON
+                    )
+                }
+                else -> error("Método inesperado")
+            }
+        }
+        conRepositorio(motor) { base, local, repo ->
+            local.guardarSincronizado(Producto(42, "Original", 2.5, 7))
+
+            val editado = Producto(42, "Editado", 3.5, 8, estado = false)
+            val confirmado = ActualizarProductoUseCase(repo)(editado).getOrThrow()
+
+            assertEquals("Editado", confirmado.nombre)
+            assertEquals("Editado", base.productoQueries.listarTodos().executeAsOne().nombre)
+        }
+    }
+
+    @Test
+    fun unaBajaRechazadaConservaLaFilaHastaConfirmacion() = runTest {
+        var respuesta = HttpStatusCode.Forbidden
+        val motor = MockEngine { solicitud ->
+            assertEquals(HttpMethod.Delete, solicitud.method)
+            assertEquals("/api/v1/productos/42", solicitud.url.encodedPath)
+            respond("", respuesta)
+        }
+        conRepositorio(motor) { base, local, repo ->
+            local.guardarSincronizado(Producto(42, "Original", 2.5, 7))
+            val eliminar = EliminarProductoUseCase(repo)
+
+            val error = assertFailsWith<ErrorApiException> { eliminar(42).getOrThrow() }
+            assertEquals(ErrorApi.SinPrivilegio, error.error)
+            assertEquals(42L, base.productoQueries.listarTodos().executeAsOne().id)
+
+            respuesta = HttpStatusCode.NoContent
+            eliminar(42).getOrThrow()
+            assertTrue(base.productoQueries.listarTodos().executeAsList().isEmpty())
+        }
+    }
+
     private suspend fun conRepositorio(
         motor: MockEngine,
         telemetria: Telemetria = TelemetriaDesactivada,
@@ -252,7 +315,7 @@ class SincronizacionProductosTest {
         val cliente = HttpClient(motor) {
             expectSuccess = true
             defaultRequest { contentType(ContentType.Application.Json) }
-            install(ContentNegotiation) { json() }
+            install(ContentNegotiation) { json(Json { encodeDefaults = true }) }
         }
         try {
             val base = PharmaDb(driver)

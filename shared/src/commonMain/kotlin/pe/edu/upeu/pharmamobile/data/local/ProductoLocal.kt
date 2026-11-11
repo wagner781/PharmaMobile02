@@ -63,9 +63,13 @@ class ProductoLocal(base: PharmaDb) {
 
     fun confirmarEnvio(idLocal: Long, producto: Producto) {
         consultas.transaction {
-            consultas.insertar(producto.id, producto.nombre, producto.precio, producto.stock.toLong(), 0L)
+            guardarSincronizado(producto)
             consultas.borrarPorId(idLocal)
         }
+    }
+
+    fun guardarSincronizado(producto: Producto) {
+        consultas.insertar(producto.id, producto.nombre, producto.precio, producto.stock.toLong(), 0L)
     }
 
     fun guardarPendiente(producto: Producto): Producto = consultas.transactionWithResult {
@@ -81,12 +85,7 @@ class ProductoLocal(base: PharmaDb) {
     fun reemplazarSincronizados(productos: List<Producto>) {
         consultas.transaction {
             consultas.borrarSincronizados()
-            productos.forEach {
-                consultas.insertar(
-                    it.id, it.nombre, it.precio,
-                    it.stock.toLong(), 0L
-                )
-            }
+            productos.forEach(::guardarSincronizado)
         }
     }
 

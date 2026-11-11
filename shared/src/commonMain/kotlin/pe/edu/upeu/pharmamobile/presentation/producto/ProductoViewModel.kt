@@ -220,7 +220,9 @@ class ProductoViewModel(
     }
 
     fun eliminar(id: Long) = viewModelScope.launch {
-        _uiState.update { it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Eliminar)) }
+        _uiState.update {
+            it.copy(operacion = ProductoUiState.Operacion.EnCurso(ProductoUiState.Operacion.Tipo.Eliminar), mensajeExito = null)
+        }
         eliminarProductoUseCase(id)
             .onSuccess {
                 _uiState.update {

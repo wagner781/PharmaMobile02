@@ -65,11 +65,18 @@ class ProductoRepositorioOffline(
     override fun obtenerUltimaSincronizacion(): Long? = local.obtenerUltimaSincronizacion()
     override fun guardarUltimaSincronizacion(timestamp: Long) = local.guardarUltimaSincronizacion(timestamp)
 
-    override suspend fun eliminar(id: Long) = mutex.withLock {
-        local.borrar(id)
-        if (id > 0) {
-            intentar { remoto.eliminar(id) }
+    override suspend fun actualizar(producto: Producto): Producto = mutex.withLock {
+        if (producto.id <= 0) {
+            throw ErrorApiException(ErrorApi.SolicitudRechazada("Sincroniza el alta antes de editar el producto"))
         }
+        val actualizado = remoto.actualizar(producto)
+        if (actualizado.estado) local.guardarSincronizado(actualizado) else local.borrar(actualizado.id)
+        actualizado
+    }
+
+    override suspend fun eliminar(id: Long) = mutex.withLock {
+        if (id > 0) remoto.eliminar(id)
+        local.borrar(id)
     }
 
     override suspend fun limpiarTodoLocal() = mutex.withLock {
